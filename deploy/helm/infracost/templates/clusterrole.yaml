@@ -1,13 +1,21 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "infracost.fullname" . }}
+  labels:
+    {{- include "infracost.labels" . | nindent 4 }}
 rules:
+  # Collector needs to read pod/node metadata for enrichment.
   - apiGroups: [""]
     resources: ["pods", "nodes", "namespaces"]
     verbs: ["get", "list", "watch"]
+  # Read node status for GPU capacity and allocatable info.
+  - apiGroups: [""]
+    resources: ["nodes/status"]
+    verbs: ["get"]
+  # CRD access for budget controller (Phase 2/3).
   - apiGroups: ["infracost.io"]
-    resources: ["inferencebudgets", "inferencecostresports"]
+    resources: ["inferencebudgets", "inferencecost reports"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
   - apiGroups: ["infracost.io"]
     resources: ["inferencebudgets/status", "inferencecostresports/status"]
@@ -16,12 +24,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "infracost.fullname" . }}
+  labels:
+    {{- include "infracost.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Release.Name }}
+  name: {{ include "infracost.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}
+    name: {{ include "infracost.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}

@@ -1,20 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-engine
+  name: {{ include "infracost.fullname" . }}-collector
+  namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: infracost-engine
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "infracost.collector.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
+  type: {{ .Values.collector.service.type }}
   ports:
-    - port: 8080
-      targetPort: http
-      protocol: TCP
-      name: http
-    - port: 9090
+    - port: {{ .Values.collector.service.port }}
       targetPort: metrics
       protocol: TCP
       name: metrics
   selector:
-    app.kubernetes.io/name: infracost-engine
+    {{- include "infracost.collector.selectorLabels" . | nindent 4 }}

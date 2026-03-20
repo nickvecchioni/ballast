@@ -1,0 +1,24 @@
+InfraCost GPU metrics collector installed.
+
+The collector DaemonSet is running on GPU nodes and exposing metrics on port {{ .Values.collector.metricsPort }}.
+
+To view raw Prometheus metrics:
+
+  kubectl port-forward -n {{ .Release.Namespace }} \
+    svc/{{ include "infracost.fullname" . }}-collector {{ .Values.collector.service.port }}:{{ .Values.collector.service.port }}
+
+  curl http://localhost:{{ .Values.collector.service.port }}/metrics
+
+To view per-pod GPU cost (requires kubectl-cost plugin):
+
+  kubectl cost top pods --all-namespaces \
+    --metrics-url http://localhost:{{ .Values.collector.service.port }}/metrics
+{{- if .Values.sidecar.enabled }}
+
+Sidecar injection is ENABLED.
+Pods with label "{{ .Values.sidecar.injectLabel }}: true" will get the inference telemetry sidecar.
+{{- else }}
+
+Sidecar injection is DISABLED.
+Set sidecar.enabled=true to auto-inject the inference telemetry sidecar.
+{{- end }}

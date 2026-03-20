@@ -1,49 +1,137 @@
+# -- Override the chart name.
+nameOverride: ""
+# -- Override the full release name.
+fullnameOverride: ""
+
+# -- Service account configuration.
+serviceAccount:
+  # -- Name override (defaults to release fullname).
+  name: ""
+  # -- Annotations to add to the service account.
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# GPU Metrics Collector (DaemonSet)
+# ---------------------------------------------------------------------------
 collector:
   image:
-    repository: infracost-collector
+    repository: ghcr.io/nickvecchioni/infracost-collector
     tag: latest
     pullPolicy: IfNotPresent
+
+  # -- Resource budgets per design doc 4.1.1: <50 MB RSS, <0.1 CPU core.
   resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
     limits:
       cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 50m
-      memory: 64Mi
+      memory: 96Mi
 
+  # -- Enable hostPID so the collector can map GPU PIDs to containers
+  # for time-sliced GPU setups. Not needed for whole-GPU or MIG.
+  hostPID: false
+
+  # -- Node selector to schedule only on GPU nodes.
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
+  # -- Tolerations so the DaemonSet lands on tainted GPU nodes.
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+  # -- Additional environment variables for the collector container.
+  extraEnv: []
+
+  # -- Security context for the collector container.
+  securityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+
+  # -- Port the collector serves Prometheus metrics on.
+  metricsPort: 9400
+
+  service:
+    # -- Service type for the collector metrics endpoint.
+    type: ClusterIP
+    # -- Port exposed by the Service.
+    port: 9400
+
+# ---------------------------------------------------------------------------
+# Attribution Engine (Deployment) — Phase 2
+# ---------------------------------------------------------------------------
 engine:
   image:
-    repository: infracost-engine
+    repository: ghcr.io/nickvecchioni/infracost-engine
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
     limits:
       cpu: 500m
       memory: 512Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
 
+# ---------------------------------------------------------------------------
+# Budget Controller (Deployment) — Phase 2/3
+# ---------------------------------------------------------------------------
 controller:
   image:
-    repository: infracost-controller
+    repository: ghcr.io/nickvecchioni/infracost-controller
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
   resources:
-    limits:
-      cpu: 200m
-      memory: 256Mi
     requests:
       cpu: 50m
       memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
 
+# ---------------------------------------------------------------------------
+# Inference Sidecar (auto-injected via mutating webhook)
+# ---------------------------------------------------------------------------
+sidecar:
+  # -- Enable the MutatingWebhookConfiguration for sidecar injection.
+  enabled: false
+  image:
+    repository: ghcr.io/nickvecchioni/infracost-sidecar
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+  # -- Port the sidecar serves its re-exported metrics on.
+  metricsPort: 9401
+  # -- Label on pods that triggers sidecar injection.
+  # Pods with this label set to "true" get the sidecar.
+  injectLabel: "infracost.io/inject-sidecar"
+  # -- Namespaces to watch for injection. Empty = all namespaces.
+  namespaceSelector: {}
+
+# ---------------------------------------------------------------------------
+# GPU Pricing
+# ---------------------------------------------------------------------------
 pricing:
   gpu_types:
     NVIDIA-H100-SXM5-80GB:
       cost_per_hour_usd: "3.90"
     NVIDIA-A100-SXM4-80GB:
       cost_per_hour_usd: "1.80"
+    NVIDIA-A100-SXM4-40GB:
+      cost_per_hour_usd: "1.10"
     NVIDIA-L4:
       cost_per_hour_usd: "0.65"
+    NVIDIA-T4:
+      cost_per_hour_usd: "0.35"
