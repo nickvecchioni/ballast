@@ -707,54 +707,9 @@ Here's what happens when a user sends an inference request to a vLLM pod:
 - [ ] Hosted SaaS option (control plane in cloud, agent in customer cluster)
 - [ ] SOC2 compliance
 
-## 8. Business model
+## 8. Technical risks and mitigations
 
-**Open-source tier (free):**
-- GPU metrics collector (DaemonSet)
-- Pod-level cost attribution
-- Prometheus metrics endpoint
-- kubectl plugin (basic commands)
-- Grafana dashboard template
-
-**Pro tier ($X/node/month, self-hosted):**
-- VictoriaMetrics-backed historical data
-- InferenceBudget CRDs with soft enforcement (alerts)
-- Team-level attribution and chargeback export
-- React dashboard
-- Slack/PagerDuty integrations
-
-**Enterprise tier (custom pricing):**
-- Hard enforcement (admission webhook)
-- Model routing policies
-- Anomaly detection and forecasting
-- Multi-cluster federation
-- Cloud billing integration (dynamic pricing)
-- SSO/RBAC
-- Priority support
-
-## 9. Key risks and mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| NVIDIA changes NVML/DCGM APIs | Low | High | Pin to NVML versions, abstract behind interface |
-| Kubecost adds GPU-native features | Medium | Medium | Move faster; they're CPU-first, GPU is a bolt-on |
-| Cloud providers bundle GPU FinOps | Medium | High | Focus on multi-cloud + on-prem; providers only optimize their own cloud |
-| K8s DRA makes custom scheduling obsolete | Low | Low | DRA helps collection (better GPU metadata), doesn't solve cost attribution |
-| Low adoption of open-source core | Medium | High | Ship useful Grafana dashboards on day 1; solve a pain people Google for |
-
-## 10. Success metrics
-
-**Phase 1 (Month 1):**
-- GitHub stars: 200+
-- Helm installs: 50+
-- HN/Reddit posts get traction
-
-**Phase 2 (Month 2-3):**
-- 5+ companies testing in staging
-- 2+ design partners providing feedback
-- First paid pilot
-
-**Phase 3 (Month 3-4):**
-- 3+ paying customers
-- $5K+ MRR
-- Featured in CNCF landscape or KubeCon talk proposal submitted
+| Risk | Mitigation |
+|------|------------|
+| NVIDIA changes NVML/DCGM APIs | Pin to NVML versions, abstract behind interface |
+| K8s DRA changes device plugin model | DRA helps collection (better GPU metadata), doesn't affect cost attribution |
