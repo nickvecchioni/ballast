@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-pricing
+  labels:
+    app.kubernetes.io/name: infracost
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  pricing.yaml: |
+    gpu_types:
+      {{- range $name, $config := .Values.pricing.gpu_types }}
+      {{ $name }}:
+        cost_per_hour_usd: {{ $config.cost_per_hour_usd }}
+      {{- end }}

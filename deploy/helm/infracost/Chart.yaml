@@ -1,0 +1,6 @@
+apiVersion: v2
+name: infracost
+description: K8s-native GPU inference cost attribution platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -1,0 +1,49 @@
+collector:
+  image:
+    repository: infracost-collector
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+engine:
+  image:
+    repository: infracost-engine
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+controller:
+  image:
+    repository: infracost-controller
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+pricing:
+  gpu_types:
+    NVIDIA-H100-SXM5-80GB:
+      cost_per_hour_usd: "3.90"
+    NVIDIA-A100-SXM4-80GB:
+      cost_per_hour_usd: "1.80"
+    NVIDIA-L4:
+      cost_per_hour_usd: "0.65"
