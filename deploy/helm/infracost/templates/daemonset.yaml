@@ -13,22 +13,56 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: infracost-collector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9400"
+        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: {{ .Release.Name }}
       containers:
         - name: collector
           image: "{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
           imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          args:
+            - --node-name=$(NODE_NAME)
+            - --pricing-config=/etc/infracost/pricing.yaml
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - name: metrics
+              containerPort: 9400
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 2
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.collector.resources | nindent 12 }}
           volumeMounts:
             - name: pod-resources
               mountPath: /var/lib/kubelet/pod-resources
               readOnly: true
+            - name: pricing-config
+              mountPath: /etc/infracost
+              readOnly: true
       volumes:
         - name: pod-resources
           hostPath:
             path: /var/lib/kubelet/pod-resources
+        - name: pricing-config
+          configMap:
+            name: {{ .Release.Name }}-pricing
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
