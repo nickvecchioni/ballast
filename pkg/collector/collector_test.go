@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/nickvecchioni/infracost/pkg/billing"
 	"github.com/nickvecchioni/infracost/pkg/models"
 )
 
@@ -32,14 +33,35 @@ func (s *stubPodResources) List(_ context.Context) (map[string]PodInfo, error) {
 }
 func (s *stubPodResources) Close() error { return nil }
 
+// stubPricing implements billing.PricingProvider with a fixed price map.
+type stubPricing struct {
+	prices       map[string]float64
+	defaultPrice float64
+}
+
+func (s *stubPricing) GetCostPerHour(gpuType string) float64 {
+	if cost, ok := s.prices[gpuType]; ok {
+		return cost
+	}
+	return s.defaultPrice
+}
+
+var _ billing.PricingProvider = (*stubPricing)(nil)
+
 // --- helpers ---
 
 func newTestCollector(t *testing.T, gpu GPUCollector, pods PodResourcesClient) (*MetricsCollector, *prometheus.Registry) {
+	t.Helper()
+	return newTestCollectorWithPricing(t, gpu, pods, nil)
+}
+
+func newTestCollectorWithPricing(t *testing.T, gpu GPUCollector, pods PodResourcesClient, pricing billing.PricingProvider) (*MetricsCollector, *prometheus.Registry) {
 	t.Helper()
 	reg := prometheus.NewRegistry()
 	mc, err := NewMetricsCollector(MetricsCollectorOpts{
 		GPUCollector: gpu,
 		PodResources: pods,
+		Pricing:      pricing,
 		NodeName:     "gpu-node-01",
 		Registry:     reg,
 	})
@@ -323,6 +345,7 @@ func TestPrometheusMetricNames(t *testing.T) {
 		"infracost_gpu_memory_total_bytes",
 		"infracost_gpu_power_watts",
 		"infracost_gpu_temperature_celsius",
+		// infracost_pod_cost_per_hour_usd not expected here — no pricing provider
 	}
 
 	mfs, err := reg.Gather()
@@ -484,5 +507,308 @@ func TestMetricOutput(t *testing.T) {
 	`
 	if err := testutil.CollectAndCompare(mc.utilization, strings.NewReader(expected)); err != nil {
 		t.Errorf("metric output mismatch:\n%v", err)
+	}
+}
+
+// --- cost metric tests ---
+
+func TestCostPerHourBasic(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{
+				UUID:               "GPU-aaa",
+				DeviceName:         "NVIDIA H100 80GB HBM3",
+				UtilizationPercent: 50,
+			},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-aaa": {Namespace: "search", PodName: "llm-serve"},
+		},
+	}
+	pricing := &stubPricing{
+		prices: map[string]float64{"NVIDIA H100 80GB HBM3": 4.00},
+	}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	// 50% of $4.00/hr = $2.00/hr
+	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "llm-serve", "namespace": "search", "node": "gpu-node-01", "gpu_type": "NVIDIA H100 80GB HBM3",
+	})
+	if v != 2.0 {
+		t.Errorf("cost = %f, want 2.0", v)
+	}
+}
+
+func TestCostPerHourFullUtilization(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "NVIDIA A100", UtilizationPercent: 100},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "ml", PodName: "train-job"},
+		},
+	}
+	pricing := &stubPricing{prices: map[string]float64{"NVIDIA A100": 1.80}}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "train-job", "namespace": "ml", "node": "gpu-node-01", "gpu_type": "NVIDIA A100",
+	})
+	if v != 1.80 {
+		t.Errorf("cost = %f, want 1.80", v)
+	}
+}
+
+func TestCostPerHourZeroUtilization(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "NVIDIA L4", UtilizationPercent: 0},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "idle", PodName: "idle-pod"},
+		},
+	}
+	pricing := &stubPricing{prices: map[string]float64{"NVIDIA L4": 0.65}}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "idle-pod", "namespace": "idle", "node": "gpu-node-01", "gpu_type": "NVIDIA L4",
+	})
+	if v != 0 {
+		t.Errorf("cost = %f, want 0", v)
+	}
+}
+
+func TestCostAggregatesMultiGPUSamePod(t *testing.T) {
+	// Pod with 4 A100s, each at 75% utilization.
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "NVIDIA A100", UtilizationPercent: 75},
+			{UUID: "GPU-002", DeviceName: "NVIDIA A100", UtilizationPercent: 75},
+			{UUID: "GPU-003", DeviceName: "NVIDIA A100", UtilizationPercent: 75},
+			{UUID: "GPU-004", DeviceName: "NVIDIA A100", UtilizationPercent: 75},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "training", PodName: "big-job"},
+			"GPU-002": {Namespace: "training", PodName: "big-job"},
+			"GPU-003": {Namespace: "training", PodName: "big-job"},
+			"GPU-004": {Namespace: "training", PodName: "big-job"},
+		},
+	}
+	pricing := &stubPricing{prices: map[string]float64{"NVIDIA A100": 2.00}}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	// 4 GPUs × 75% × $2.00 = $6.00/hr
+	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "big-job", "namespace": "training", "node": "gpu-node-01", "gpu_type": "NVIDIA A100",
+	})
+	if v != 6.0 {
+		t.Errorf("cost = %f, want 6.0", v)
+	}
+}
+
+func TestCostMultiplePodsMultipleTypes(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "NVIDIA H100", UtilizationPercent: 100},
+			{UUID: "GPU-002", DeviceName: "NVIDIA L4", UtilizationPercent: 50},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "search", PodName: "serve-a"},
+			"GPU-002": {Namespace: "batch", PodName: "serve-b"},
+		},
+	}
+	pricing := &stubPricing{prices: map[string]float64{
+		"NVIDIA H100": 4.00,
+		"NVIDIA L4":   0.60,
+	}}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	v1 := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "serve-a", "namespace": "search", "node": "gpu-node-01", "gpu_type": "NVIDIA H100",
+	})
+	if v1 != 4.0 {
+		t.Errorf("serve-a cost = %f, want 4.0", v1)
+	}
+
+	v2 := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "serve-b", "namespace": "batch", "node": "gpu-node-01", "gpu_type": "NVIDIA L4",
+	})
+	if v2 != 0.30 {
+		t.Errorf("serve-b cost = %f, want 0.30", v2)
+	}
+}
+
+func TestCostFallbackPrice(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "UNKNOWN GPU", UtilizationPercent: 100},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "ns", PodName: "pod"},
+		},
+	}
+	pricing := &stubPricing{
+		prices:       map[string]float64{},
+		defaultPrice: 1.50,
+	}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "pod", "namespace": "ns", "node": "gpu-node-01", "gpu_type": "UNKNOWN GPU",
+	})
+	if v != 1.50 {
+		t.Errorf("cost = %f, want 1.50", v)
+	}
+}
+
+func TestCostNotEmittedWithoutPricing(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "NVIDIA H100", UtilizationPercent: 50},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "ns", PodName: "pod"},
+		},
+	}
+
+	// No pricing provider.
+	mc, reg := newTestCollector(t, gpu, pods)
+	mc.CollectOnce(context.Background())
+
+	mfs, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("gather: %v", err)
+	}
+	for _, mf := range mfs {
+		if mf.GetName() == "infracost_pod_cost_per_hour_usd" {
+			t.Error("cost metric should not be emitted without a pricing provider")
+		}
+	}
+}
+
+func TestCostUnmappedGPU(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-orphan", DeviceName: "NVIDIA H100", UtilizationPercent: 80},
+		},
+	}
+	pods := &stubPodResources{mapping: map[string]PodInfo{}}
+	pricing := &stubPricing{prices: map[string]float64{"NVIDIA H100": 4.00}}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	// Unmapped GPU still gets a cost entry with empty pod/namespace.
+	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "", "namespace": "", "node": "gpu-node-01", "gpu_type": "NVIDIA H100",
+	})
+	// 80% × $4.00 = $3.20
+	if v != 3.20 {
+		t.Errorf("cost = %f, want 3.20", v)
+	}
+}
+
+func TestCostResetsOnNewCycle(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "NVIDIA A100", UtilizationPercent: 50},
+			{UUID: "GPU-002", DeviceName: "NVIDIA L4", UtilizationPercent: 100},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "ns", PodName: "pod-a"},
+			"GPU-002": {Namespace: "ns", PodName: "pod-b"},
+		},
+	}
+	pricing := &stubPricing{prices: map[string]float64{
+		"NVIDIA A100": 2.00,
+		"NVIDIA L4":   0.60,
+	}}
+
+	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	// Second cycle: GPU-002 disappears.
+	gpu.metrics = []models.GPUMetrics{
+		{UUID: "GPU-001", DeviceName: "NVIDIA A100", UtilizationPercent: 80},
+	}
+	mc.CollectOnce(context.Background())
+
+	// pod-a cost updated: 80% × $2.00 = $1.60
+	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+		"pod": "pod-a", "namespace": "ns", "node": "gpu-node-01", "gpu_type": "NVIDIA A100",
+	})
+	if v != 1.60 {
+		t.Errorf("cost = %f, want 1.60", v)
+	}
+
+	// pod-b cost should be gone.
+	mfs, _ := reg.Gather()
+	for _, mf := range mfs {
+		if mf.GetName() != "infracost_pod_cost_per_hour_usd" {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			for _, lp := range m.GetLabel() {
+				if lp.GetName() == "pod" && lp.GetValue() == "pod-b" {
+					t.Error("stale cost for pod-b still present")
+				}
+			}
+		}
+	}
+}
+
+func TestCostMetricOutput(t *testing.T) {
+	gpu := &stubGPUCollector{
+		metrics: []models.GPUMetrics{
+			{UUID: "GPU-001", DeviceName: "NVIDIA H100", UtilizationPercent: 73},
+		},
+	}
+	pods := &stubPodResources{
+		mapping: map[string]PodInfo{
+			"GPU-001": {Namespace: "search", PodName: "llm-serve"},
+		},
+	}
+	pricing := &stubPricing{prices: map[string]float64{"NVIDIA H100": 3.90}}
+
+	mc, _ := newTestCollectorWithPricing(t, gpu, pods, pricing)
+	mc.CollectOnce(context.Background())
+
+	// 73% × $3.90 = $2.847
+	expected := `
+		# HELP infracost_pod_cost_per_hour_usd Estimated cost per hour in USD based on GPU utilization and pricing.
+		# TYPE infracost_pod_cost_per_hour_usd gauge
+		infracost_pod_cost_per_hour_usd{gpu_type="NVIDIA H100",namespace="search",node="gpu-node-01",pod="llm-serve"} 2.847
+	`
+	if err := testutil.CollectAndCompare(mc.costPerHour, strings.NewReader(expected)); err != nil {
+		t.Errorf("cost metric output mismatch:\n%v", err)
 	}
 }

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/nickvecchioni/infracost/pkg/billing"
 )
 
 const (
@@ -13,7 +15,10 @@ const (
 	defaultInterval  = 1 * time.Second
 )
 
-var gpuLabels = []string{"gpu_uuid", "pod", "namespace", "node"}
+var (
+	gpuLabels  = []string{"gpu_uuid", "pod", "namespace", "node"}
+	costLabels = []string{"pod", "namespace", "node", "gpu_type"}
+)
 
 // MetricsCollector ties together GPUCollector and PodResourcesClient,
 // periodically collecting GPU metrics, joining them with pod ownership,
@@ -21,6 +26,7 @@ var gpuLabels = []string{"gpu_uuid", "pod", "namespace", "node"}
 type MetricsCollector struct {
 	gpu      GPUCollector
 	pods     PodResourcesClient
+	pricing  billing.PricingProvider
 	nodeName string
 	interval time.Duration
 	logger   *slog.Logger
@@ -30,12 +36,14 @@ type MetricsCollector struct {
 	memoryTotal *prometheus.GaugeVec
 	power       *prometheus.GaugeVec
 	temperature *prometheus.GaugeVec
+	costPerHour *prometheus.GaugeVec
 }
 
 // MetricsCollectorOpts configures a MetricsCollector.
 type MetricsCollectorOpts struct {
 	GPUCollector GPUCollector
 	PodResources PodResourcesClient
+	Pricing      billing.PricingProvider // optional; enables cost metric
 	NodeName     string
 	Interval     time.Duration
 	Registry     prometheus.Registerer
@@ -55,6 +63,7 @@ func NewMetricsCollector(opts MetricsCollectorOpts) (*MetricsCollector, error) {
 	mc := &MetricsCollector{
 		gpu:      opts.GPUCollector,
 		pods:     opts.PodResources,
+		pricing:  opts.Pricing,
 		nodeName: opts.NodeName,
 		interval: opts.Interval,
 		logger:   opts.Logger,
@@ -83,6 +92,11 @@ func NewMetricsCollector(opts MetricsCollectorOpts) (*MetricsCollector, error) {
 			Name:      "gpu_temperature_celsius",
 			Help:      "Current GPU temperature in degrees Celsius.",
 		}, gpuLabels),
+		costPerHour: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: metricsNamespace,
+			Name:      "pod_cost_per_hour_usd",
+			Help:      "Estimated cost per hour in USD based on GPU utilization and pricing.",
+		}, costLabels),
 	}
 
 	for _, c := range mc.collectors() {
@@ -100,6 +114,7 @@ func (mc *MetricsCollector) collectors() []prometheus.Collector {
 		mc.memoryTotal,
 		mc.power,
 		mc.temperature,
+		mc.costPerHour,
 	}
 }
 
@@ -144,6 +159,12 @@ func (mc *MetricsCollector) collect(ctx context.Context) {
 	mc.memoryTotal.Reset()
 	mc.power.Reset()
 	mc.temperature.Reset()
+	mc.costPerHour.Reset()
+
+	// costAccum aggregates cost across multiple GPUs for the same
+	// (pod, namespace, gpu_type) tuple.
+	type costKey struct{ pod, namespace, gpuType string }
+	costAccum := make(map[costKey]float64)
 
 	for _, gm := range gpuMetrics {
 		podName := ""
@@ -165,5 +186,21 @@ func (mc *MetricsCollector) collect(ctx context.Context) {
 		mc.memoryTotal.With(labels).Set(float64(gm.MemoryTotalBytes))
 		mc.power.With(labels).Set(gm.PowerDrawWatts)
 		mc.temperature.With(labels).Set(float64(gm.TemperatureCelsius))
+
+		if mc.pricing != nil {
+			rate := mc.pricing.GetCostPerHour(gm.DeviceName)
+			cost := (float64(gm.UtilizationPercent) / 100.0) * rate
+			key := costKey{pod: podName, namespace: namespace, gpuType: gm.DeviceName}
+			costAccum[key] += cost
+		}
+	}
+
+	for key, cost := range costAccum {
+		mc.costPerHour.With(prometheus.Labels{
+			"pod":       key.pod,
+			"namespace": key.namespace,
+			"node":      mc.nodeName,
+			"gpu_type":  key.gpuType,
+		}).Set(cost)
 	}
 }
