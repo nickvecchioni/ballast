@@ -8,18 +8,25 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+
+	v1alpha1 "github.com/nickvecchioni/infracost/api/v1alpha1"
 	"github.com/nickvecchioni/infracost/pkg/attribution"
-	_ "github.com/nickvecchioni/infracost/pkg/enforcement" // Budget controller; K8s CRD watcher wiring TBD.
+	"github.com/nickvecchioni/infracost/pkg/enforcement"
 )
 
 func main() {
 	var (
 		promURL    = flag.String("prometheus-url", "http://localhost:9090", "VictoriaMetrics or Prometheus base URL")
-		listenAddr = flag.String("listen-address", ":8081", "Address for the health/webhook endpoint")
+		listenAddr = flag.String("listen-address", ":8081", "Address for the health endpoint")
 		interval   = flag.Duration("reconcile-interval", 60*time.Second, "Budget reconciliation interval")
+		kubeconfig = flag.String("kubeconfig", "", "Path to kubeconfig (uses in-cluster config if empty)")
 	)
 	flag.Parse()
 
@@ -32,18 +39,48 @@ func main() {
 		"interval", interval.String(),
 	)
 
-	store := attribution.NewPromStore(*promURL)
-	engine := attribution.NewEngine(store)
+	// --- K8s client ---
+	var config *rest.Config
+	var err error
+	if *kubeconfig != "" {
+		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	} else {
+		config, err = rest.InClusterConfig()
+	}
+	if err != nil {
+		logger.Error("failed to create k8s config", "err", err)
+		os.Exit(1)
+	}
 
-	// In a full deployment, the controller would use a K8s client to list
-	// InferenceBudget CRs and update their status. For now, the BudgetStore
-	// interface is satisfied by a K8s-backed implementation (not yet wired).
-	// This binary serves as the entry point; the K8s client wiring will be
-	// added when the CRDs are deployed.
-	logger.Warn("budget controller running in standalone mode (no K8s CRD watcher)")
-	_ = engine
+	dynClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		logger.Error("failed to create k8s dynamic client", "err", err)
+		os.Exit(1)
+	}
 
-	// Health endpoint.
+	budgetStore := enforcement.NewK8sBudgetStore(dynClient)
+
+	// --- Attribution engine ---
+	promStore := attribution.NewPromStore(*promURL)
+	engine := attribution.NewEngine(promStore)
+
+	// --- Build notifiers from CRD alert channels ---
+	// The controller discovers notifiers from each budget's spec at reconcile
+	// time. For global notifiers, they could be passed via flags. For now,
+	// per-budget channels are used.
+	var notifiers []enforcement.Notifier
+	// Notifiers are built per-budget during reconciliation. A future
+	// enhancement could add global --slack-webhook / --pagerduty-key flags.
+
+	ctrl := enforcement.NewBudgetController(enforcement.BudgetControllerOpts{
+		Store:     budgetStore,
+		Engine:    engine,
+		Notifiers: notifiers,
+		Interval:  *interval,
+		Logger:    logger,
+	})
+
+	// --- Health endpoint ---
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -57,6 +94,10 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
+
+	// Start the budget controller loop.
+	go ctrl.Run(ctx)
+	logger.Info("budget controller started")
 
 	go func() {
 		logger.Info("serving health endpoint", "addr", *listenAddr)
@@ -76,4 +117,8 @@ func main() {
 	}
 
 	logger.Info("infracost-controller stopped")
+
+	// Prevent unused import warnings.
+	_ = v1alpha1.GroupVersion
+	_ = strings.Contains
 }

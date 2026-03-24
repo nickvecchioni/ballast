@@ -1,4 +1,113 @@
-{{/*
-VictoriaMetrics StatefulSet — Phase 2.
-Uncomment when the attribution engine storage layer is implemented.
-*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infracost.fullname" . }}-victoriametrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "infracost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: victoriametrics
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8428
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/component: victoriametrics
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "infracost.fullname" . }}-victoriametrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "infracost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: victoriametrics
+spec:
+  serviceName: {{ include "infracost.fullname" . }}-victoriametrics
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: victoriametrics
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: victoriametrics
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: victoriametrics
+          image: victoriametrics/victoria-metrics:v1.101.0
+          args:
+            - -retentionPeriod=12
+            - -storageDataPath=/storage
+            - -promscrape.config=/config/scrape.yaml
+            - -httpListenAddr=:8428
+          ports:
+            - name: http
+              containerPort: 8428
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: storage
+              mountPath: /storage
+            - name: scrape-config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: scrape-config
+          configMap:
+            name: {{ include "infracost.fullname" . }}-scrape-config
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "infracost.fullname" . }}-scrape-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "infracost.labels" . | nindent 4 }}
+data:
+  scrape.yaml: |
+    scrape_configs:
+      - job_name: infracost-collector
+        scrape_interval: 15s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - {{ .Release.Namespace }}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            regex: {{ include "infracost.fullname" . }}-collector
+            action: keep
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            regex: metrics
+            action: keep
