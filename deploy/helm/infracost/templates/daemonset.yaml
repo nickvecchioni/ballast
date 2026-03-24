@@ -48,6 +48,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: LD_LIBRARY_PATH
+              value: /usr/local/nvidia/lib64
             {{- with .Values.collector.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -83,9 +85,10 @@ spec:
             - name: pricing-config
               mountPath: /etc/infracost
               readOnly: true
+            - name: nvidia-libs
+              mountPath: /usr/local/nvidia
+              readOnly: true
             {{- if .Values.collector.hostPID }}
-            # /proc from the host is needed for PID-to-cgroup mapping
-            # when GPUs are time-sliced across multiple pods.
             - name: host-proc
               mountPath: /host/proc
               readOnly: true
@@ -99,6 +102,10 @@ spec:
         - name: pricing-config
           configMap:
             name: {{ include "infracost.fullname" . }}-pricing
+        - name: nvidia-libs
+          hostPath:
+            path: {{ .Values.collector.nvidiaDriverPath }}
+            type: Directory
         {{- if .Values.collector.hostPID }}
         - name: host-proc
           hostPath:

@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -170,6 +171,12 @@ func (mc *MetricsCollector) collect(ctx context.Context) {
 		podName := ""
 		namespace := ""
 		if info, ok := podMap[gm.UUID]; ok {
+			// Match by GPU UUID (e.g. "GPU-271452fb-...")
+			podName = info.PodName
+			namespace = info.Namespace
+		} else if info, ok := podMap[fmt.Sprintf("nvidia%d", gm.Index)]; ok {
+			// Match by device index (e.g. "nvidia0") — used by some
+			// device plugin configurations including GKE.
 			podName = info.PodName
 			namespace = info.Namespace
 		}

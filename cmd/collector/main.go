@@ -59,6 +59,17 @@ func main() {
 	defer podResClient.Close()
 	logger.Info("connected to kubelet PodResources API", "socket", *socketPath)
 
+	// Verify PodResources API works by doing a test query.
+	testMap, err := podResClient.List(context.Background())
+	if err != nil {
+		logger.Error("PodResources API test query failed", "err", err)
+	} else {
+		logger.Info("PodResources API test query", "gpu_count", len(testMap))
+		for uuid, info := range testMap {
+			logger.Info("GPU→Pod mapping", "gpu", uuid, "pod", info.PodName, "namespace", info.Namespace)
+		}
+	}
+
 	// --- Pricing (optional) ---
 	var pricing billing.PricingProvider
 	if *pricingConfig != "" {

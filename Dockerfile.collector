@@ -1,10 +1,14 @@
-FROM golang:1.25 AS builder
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
+RUN wget -qO- https://go.dev/dl/go1.25.6.linux-amd64.tar.gz | tar -C /usr/local -xz
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /infracost-collector ./cmd/collector
+RUN go build -trimpath -ldflags='-s -w' -o /infracost-collector ./cmd/collector
 
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
 

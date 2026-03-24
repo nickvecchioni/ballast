@@ -42,15 +42,19 @@ collector:
       operator: Exists
       effect: NoSchedule
 
+  # -- Path to NVIDIA driver libraries on the host.
+  # GKE: /home/kubernetes/bin/nvidia
+  # Most others (k3s, EKS, kubeadm): /usr/local/nvidia or /usr/lib/x86_64-linux-gnu
+  nvidiaDriverPath: /home/kubernetes/bin/nvidia
+
   # -- Additional environment variables for the collector container.
   extraEnv: []
 
   # -- Security context for the collector container.
+  # The collector needs privileged access to read GPU metrics via NVML
+  # and access /dev/nvidia* device files (same approach as DCGM Exporter).
   securityContext:
-    readOnlyRootFilesystem: true
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop: [ALL]
+    privileged: true
 
   # -- Port the collector serves Prometheus metrics on.
   metricsPort: 9400
@@ -124,8 +128,12 @@ sidecar:
 # GPU Pricing
 # ---------------------------------------------------------------------------
 pricing:
+  # Keys are matched against NVML DeviceGetName output after normalisation
+  # (dashes/underscores → spaces, case-insensitive). Common NVML names:
+  #   "NVIDIA H100 80GB HBM3", "NVIDIA A100-SXM4-80GB", "Tesla T4",
+  #   "Tesla V100-SXM2-32GB", "NVIDIA L4"
   gpu_types:
-    NVIDIA-H100-SXM5-80GB:
+    NVIDIA-H100-80GB-HBM3:
       cost_per_hour_usd: "3.90"
     NVIDIA-A100-SXM4-80GB:
       cost_per_hour_usd: "1.80"
@@ -133,5 +141,9 @@ pricing:
       cost_per_hour_usd: "1.10"
     NVIDIA-L4:
       cost_per_hour_usd: "0.65"
-    NVIDIA-T4:
+    Tesla-T4:
       cost_per_hour_usd: "0.35"
+    Tesla-V100-SXM2-32GB:
+      cost_per_hour_usd: "0.29"
+    Tesla-V100-SXM2-16GB:
+      cost_per_hour_usd: "0.19"

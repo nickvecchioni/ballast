@@ -79,6 +79,14 @@ helm install infracost deploy/helm/infracost \
 
 The collector DaemonSet will start on every GPU node and expose metrics on port 9400.
 
+**GKE note:** The default `nvidiaDriverPath` is set for GKE (`/home/kubernetes/bin/nvidia`). For k3s, EKS, or kubeadm clusters, override it:
+
+```bash
+helm install infracost deploy/helm/infracost \
+  --namespace infracost --create-namespace \
+  --set collector.nvidiaDriverPath=/usr/local/nvidia
+```
+
 ### Verify
 
 ```bash
@@ -100,7 +108,7 @@ helm install infracost deploy/helm/infracost \
   --set pricing.gpu_types.NVIDIA-A100-SXM4-80GB.cost_per_hour_usd=1.80
 ```
 
-Default pricing is included for H100, A100 (80GB/40GB), L4, and T4.
+Default pricing is included for H100, A100 (80GB/40GB), L4, T4, and V100. Keys are normalised to match NVML device names (dashes/underscores become spaces, case-insensitive).
 
 ### kubectl Plugin
 
@@ -196,9 +204,9 @@ make build
 # Run tests
 make test
 
-# Build Docker images
-make docker-collector
-make docker-engine
+# Build Docker images (use --platform for cross-compilation on Apple Silicon)
+docker build --platform linux/amd64 -f Dockerfile.collector -t infracost-collector:latest .
+docker build --platform linux/amd64 -f Dockerfile.engine -t infracost-engine:latest .
 
 # Lint
 make lint
