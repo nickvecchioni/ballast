@@ -1,0 +1,13 @@
+apiVersion: infracost.io/v1alpha1
+kind: InferenceBudget
+metadata:
+  name: default-budget
+  namespace: default
+spec:
+  limits:
+    monthly_usd: 100
+    daily_usd: 10
+  alerts:
+    thresholds: [50, 75, 90, 100]
+  enforcement:
+    mode: monitor

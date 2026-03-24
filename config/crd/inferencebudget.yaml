@@ -1,0 +1,96 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: inferencebudgets.infracost.io
+spec:
+  group: infracost.io
+  names:
+    kind: InferenceBudget
+    listKind: InferenceBudgetList
+    plural: inferencebudgets
+    singular: inferencebudget
+    shortNames:
+      - ib
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Monthly Budget
+          type: number
+          jsonPath: .spec.limits.monthly_usd
+        - name: Spent
+          type: number
+          jsonPath: .status.current_month_spend_usd
+        - name: "% Used"
+          type: number
+          jsonPath: .status.budget_percent_used
+        - name: Status
+          type: string
+          jsonPath: .status.budget_status
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: ["limits"]
+              properties:
+                limits:
+                  type: object
+                  required: ["monthly_usd"]
+                  properties:
+                    monthly_usd:
+                      type: number
+                    daily_usd:
+                      type: number
+                enforcement:
+                  type: object
+                  properties:
+                    mode:
+                      type: string
+                      enum: ["hard", "soft", "monitor"]
+                      default: "monitor"
+                alerts:
+                  type: object
+                  properties:
+                    thresholds:
+                      type: array
+                      items:
+                        type: integer
+                    channels:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                            enum: ["slack", "pagerduty"]
+                          webhook:
+                            type: string
+                          routing_key:
+                            type: string
+            status:
+              type: object
+              properties:
+                current_month_spend_usd:
+                  type: number
+                daily_spend_usd:
+                  type: number
+                projected_monthly_usd:
+                  type: number
+                budget_percent_used:
+                  type: number
+                budget_status:
+                  type: string
+                last_alerted_threshold:
+                  type: integer
+                last_updated:
+                  type: string
+                  format: date-time
