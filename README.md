@@ -1,8 +1,8 @@
-# InfraCost
+# Ballast
 
 **K8s-native GPU inference cost attribution platform.**
 
-InfraCost answers the question every platform team running GPU inference asks: *"What is each pod actually costing us right now?"*
+Ballast answers the question every platform team running GPU inference asks: *"What is each pod actually costing us right now?"*
 
 It collects GPU metrics via NVML, maps them to Kubernetes pods, multiplies by your configured GPU pricing, and exposes per-pod cost as a Prometheus metric — no external SaaS dependency required.
 
@@ -17,7 +17,7 @@ batch       training-job-99999     NVIDIA L4    95%       $0.62
 
 ## Features
 
-- **Per-pod GPU cost** — `infracost_pod_cost_per_hour_usd` Prometheus metric with pod/namespace/node/gpu_type labels
+- **Per-pod GPU cost** — `ballast_pod_cost_per_hour_usd` Prometheus metric with pod/namespace/node/gpu_type labels
 - **GPU metrics** — utilization, memory, power, temperature per GPU, mapped to owning pods
 - **Inference telemetry** — sidecar scrapes vLLM token counts and re-exposes with pod labels
 - **kubectl plugin** — `kubectl cost top pods` for real-time cost view
@@ -73,8 +73,8 @@ batch       training-job-99999     NVIDIA L4    95%       $0.62
 ### Install
 
 ```bash
-helm install infracost deploy/helm/infracost \
-  --namespace infracost --create-namespace
+helm install ballast deploy/helm/ballast \
+  --namespace ballast --create-namespace
 ```
 
 The collector DaemonSet will start on every GPU node and expose metrics on port 9400.
@@ -82,8 +82,8 @@ The collector DaemonSet will start on every GPU node and expose metrics on port 
 **GKE note:** The default `nvidiaDriverPath` is set for GKE (`/home/kubernetes/bin/nvidia`). For k3s, EKS, or kubeadm clusters, override it:
 
 ```bash
-helm install infracost deploy/helm/infracost \
-  --namespace infracost --create-namespace \
+helm install ballast deploy/helm/ballast \
+  --namespace ballast --create-namespace \
   --set collector.nvidiaDriverPath=/usr/local/nvidia
 ```
 
@@ -91,11 +91,11 @@ helm install infracost deploy/helm/infracost \
 
 ```bash
 # Check the collector pods are running
-kubectl get pods -n infracost -l app.kubernetes.io/component=collector
+kubectl get pods -n ballast -l app.kubernetes.io/component=collector
 
 # Port-forward and check metrics
-kubectl port-forward -n infracost svc/infracost-collector 9400:9400
-curl -s http://localhost:9400/metrics | grep infracost_pod_cost
+kubectl port-forward -n ballast svc/ballast-collector 9400:9400
+curl -s http://localhost:9400/metrics | grep ballast_pod_cost
 ```
 
 ### Configure GPU Pricing
@@ -103,7 +103,7 @@ curl -s http://localhost:9400/metrics | grep infracost_pod_cost
 Edit `values.yaml` or pass `--set` flags:
 
 ```bash
-helm install infracost deploy/helm/infracost \
+helm install ballast deploy/helm/ballast \
   --set pricing.gpu_types.NVIDIA-H100-SXM5-80GB.cost_per_hour_usd=3.90 \
   --set pricing.gpu_types.NVIDIA-A100-SXM4-80GB.cost_per_hour_usd=1.80
 ```
@@ -124,7 +124,7 @@ kubectl cost top pods -n search
 
 ### Grafana Dashboard
 
-Import `deploy/grafana/infracost-dashboard.json` into Grafana. Select your Prometheus data source when prompted.
+Import `deploy/grafana/ballast-dashboard.json` into Grafana. Select your Prometheus data source when prompted.
 
 The dashboard includes:
 - Per-pod cost table with GPU type, utilization, memory, and power
@@ -141,13 +141,13 @@ For vLLM token-level metrics, add the sidecar to your inference pods:
 
 ```bash
 # Enable sidecar auto-injection
-helm upgrade infracost deploy/helm/infracost --set sidecar.enabled=true
+helm upgrade ballast deploy/helm/ballast --set sidecar.enabled=true
 
 # Label pods for injection
-kubectl label pod llm-serve-abc infracost.io/inject-sidecar=true
+kubectl label pod llm-serve-abc ballast.io/inject-sidecar=true
 ```
 
-Or add the sidecar container manually — it scrapes `localhost:8000/metrics` and re-exposes on port 9401 with `infracost_inference_` prefix.
+Or add the sidecar container manually — it scrapes `localhost:8000/metrics` and re-exposes on port 9401 with `ballast_inference_` prefix.
 
 ## Metrics Reference
 
@@ -155,22 +155,22 @@ Or add the sidecar container manually — it scrapes `localhost:8000/metrics` an
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `infracost_gpu_utilization_percent` | gauge | gpu_uuid, pod, namespace, node | GPU compute utilization (0-100) |
-| `infracost_gpu_memory_used_bytes` | gauge | gpu_uuid, pod, namespace, node | GPU memory in use |
-| `infracost_gpu_memory_total_bytes` | gauge | gpu_uuid, pod, namespace, node | Total GPU memory |
-| `infracost_gpu_power_watts` | gauge | gpu_uuid, pod, namespace, node | GPU power draw |
-| `infracost_gpu_temperature_celsius` | gauge | gpu_uuid, pod, namespace, node | GPU temperature |
-| `infracost_pod_cost_per_hour_usd` | gauge | pod, namespace, node, gpu_type | Estimated hourly cost |
+| `ballast_gpu_utilization_percent` | gauge | gpu_uuid, pod, namespace, node | GPU compute utilization (0-100) |
+| `ballast_gpu_memory_used_bytes` | gauge | gpu_uuid, pod, namespace, node | GPU memory in use |
+| `ballast_gpu_memory_total_bytes` | gauge | gpu_uuid, pod, namespace, node | Total GPU memory |
+| `ballast_gpu_power_watts` | gauge | gpu_uuid, pod, namespace, node | GPU power draw |
+| `ballast_gpu_temperature_celsius` | gauge | gpu_uuid, pod, namespace, node | GPU temperature |
+| `ballast_pod_cost_per_hour_usd` | gauge | pod, namespace, node, gpu_type | Estimated hourly cost |
 
 ### Sidecar (port 9401)
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `infracost_inference_prompt_tokens_total` | counter | pod, namespace, node, model_name | Cumulative input tokens |
-| `infracost_inference_generation_tokens_total` | counter | pod, namespace, node, model_name | Cumulative output tokens |
-| `infracost_inference_requests_total` | counter | pod, namespace, node, model_name | Completed requests |
-| `infracost_inference_requests_running` | gauge | pod, namespace, node, model_name | In-flight requests |
-| `infracost_inference_gpu_cache_usage_percent` | gauge | pod, namespace, node, model_name | KV-cache utilization |
+| `ballast_inference_prompt_tokens_total` | counter | pod, namespace, node, model_name | Cumulative input tokens |
+| `ballast_inference_generation_tokens_total` | counter | pod, namespace, node, model_name | Cumulative output tokens |
+| `ballast_inference_requests_total` | counter | pod, namespace, node, model_name | Completed requests |
+| `ballast_inference_requests_running` | gauge | pod, namespace, node, model_name | In-flight requests |
+| `ballast_inference_gpu_cache_usage_percent` | gauge | pod, namespace, node, model_name | KV-cache utilization |
 
 ## Project Structure
 
@@ -205,8 +205,8 @@ make build
 make test
 
 # Build Docker images (use --platform for cross-compilation on Apple Silicon)
-docker build --platform linux/amd64 -f Dockerfile.collector -t infracost-collector:latest .
-docker build --platform linux/amd64 -f Dockerfile.engine -t infracost-engine:latest .
+docker build --platform linux/amd64 -f Dockerfile.collector -t ballast-collector:latest .
+docker build --platform linux/amd64 -f Dockerfile.engine -t ballast-engine:latest .
 
 # Lint
 make lint
@@ -225,7 +225,7 @@ make lint
 
 - Follow standard Go project layout
 - Use interfaces for testability (especially NVML and K8s clients)
-- Prometheus metrics use the `infracost_` prefix
+- Prometheus metrics use the `ballast_` prefix
 - Wrap errors with `fmt.Errorf("context: %w", err)`
 - Use `slog` for structured logging
 - Keep the collector DaemonSet footprint minimal (<50 MB RAM, <0.1 CPU)

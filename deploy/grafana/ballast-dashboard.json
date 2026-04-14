@@ -3,7 +3,7 @@
     {
       "name": "DS_PROMETHEUS",
       "label": "Prometheus",
-      "description": "Prometheus data source pointing at infracost metrics",
+      "description": "Prometheus data source pointing at ballast metrics",
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
@@ -57,7 +57,7 @@
       },
       "targets": [
         {
-          "expr": "sum(infracost_pod_cost_per_hour_usd)",
+          "expr": "sum(ballast_pod_cost_per_hour_usd)",
           "legendFormat": "Total $/hr",
           "refId": "A"
         }
@@ -88,7 +88,7 @@
       },
       "targets": [
         {
-          "expr": "count(infracost_gpu_utilization_percent)",
+          "expr": "count(ballast_gpu_utilization_percent)",
           "legendFormat": "GPUs",
           "refId": "A"
         }
@@ -124,7 +124,7 @@
       },
       "targets": [
         {
-          "expr": "avg(infracost_gpu_utilization_percent)",
+          "expr": "avg(ballast_gpu_utilization_percent)",
           "legendFormat": "Avg Util %",
           "refId": "A"
         }
@@ -158,7 +158,7 @@
       },
       "targets": [
         {
-          "expr": "sum(infracost_pod_cost_per_hour_usd) * 730",
+          "expr": "sum(ballast_pod_cost_per_hour_usd) * 730",
           "legendFormat": "Projected Monthly",
           "refId": "A"
         }
@@ -254,28 +254,28 @@
       ],
       "targets": [
         {
-          "expr": "infracost_pod_cost_per_hour_usd{namespace=~\"$namespace\"}",
+          "expr": "ballast_pod_cost_per_hour_usd{namespace=~\"$namespace\"}",
           "format": "table",
           "instant": true,
           "legendFormat": "",
           "refId": "cost"
         },
         {
-          "expr": "avg by (pod, namespace, node) (infracost_gpu_utilization_percent{namespace=~\"$namespace\"})",
+          "expr": "avg by (pod, namespace, node) (ballast_gpu_utilization_percent{namespace=~\"$namespace\"})",
           "format": "table",
           "instant": true,
           "legendFormat": "",
           "refId": "util"
         },
         {
-          "expr": "sum by (pod, namespace, node) (infracost_gpu_memory_used_bytes{namespace=~\"$namespace\"})",
+          "expr": "sum by (pod, namespace, node) (ballast_gpu_memory_used_bytes{namespace=~\"$namespace\"})",
           "format": "table",
           "instant": true,
           "legendFormat": "",
           "refId": "mem"
         },
         {
-          "expr": "sum by (pod, namespace, node) (infracost_gpu_power_watts{namespace=~\"$namespace\"})",
+          "expr": "sum by (pod, namespace, node) (ballast_gpu_power_watts{namespace=~\"$namespace\"})",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -323,7 +323,7 @@
       },
       "targets": [
         {
-          "expr": "infracost_gpu_utilization_percent{namespace=~\"$namespace\"}",
+          "expr": "ballast_gpu_utilization_percent{namespace=~\"$namespace\"}",
           "legendFormat": "{{ node }}/{{ gpu_uuid }}",
           "refId": "A"
         }
@@ -355,7 +355,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (namespace) (infracost_pod_cost_per_hour_usd)",
+          "expr": "sum by (namespace) (ballast_pod_cost_per_hour_usd)",
           "legendFormat": "{{ namespace }}",
           "refId": "A"
         }
@@ -392,12 +392,12 @@
       },
       "targets": [
         {
-          "expr": "sum(infracost_pod_cost_per_hour_usd)",
+          "expr": "sum(ballast_pod_cost_per_hour_usd)",
           "legendFormat": "Total Cluster $/hr",
           "refId": "A"
         },
         {
-          "expr": "sum by (namespace) (infracost_pod_cost_per_hour_usd)",
+          "expr": "sum by (namespace) (ballast_pod_cost_per_hour_usd)",
           "legendFormat": "{{ namespace }}",
           "refId": "B"
         }
@@ -430,7 +430,7 @@
       },
       "targets": [
         {
-          "expr": "avg by (pod, namespace) (infracost_gpu_utilization_percent{namespace=~\"$namespace\"})",
+          "expr": "avg by (pod, namespace) (ballast_gpu_utilization_percent{namespace=~\"$namespace\"})",
           "legendFormat": "{{ namespace }}/{{ pod }}",
           "refId": "A"
         }
@@ -461,7 +461,7 @@
       },
       "targets": [
         {
-          "expr": "infracost_gpu_power_watts{namespace=~\"$namespace\"}",
+          "expr": "ballast_gpu_power_watts{namespace=~\"$namespace\"}",
           "legendFormat": "{{ namespace }}/{{ pod }}",
           "refId": "A"
         }
@@ -470,18 +470,18 @@
   ],
   "refresh": "10s",
   "schemaVersion": 39,
-  "tags": ["infracost", "gpu", "kubernetes", "cost"],
+  "tags": ["ballast", "gpu", "kubernetes", "cost"],
   "templating": {
     "list": [
       {
         "current": { "selected": false, "text": "All", "value": "$__all" },
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-        "definition": "label_values(infracost_pod_cost_per_hour_usd, namespace)",
+        "definition": "label_values(ballast_pod_cost_per_hour_usd, namespace)",
         "includeAll": true,
         "multi": true,
         "name": "namespace",
         "options": [],
-        "query": { "query": "label_values(infracost_pod_cost_per_hour_usd, namespace)", "refId": "A" },
+        "query": { "query": "label_values(ballast_pod_cost_per_hour_usd, namespace)", "refId": "A" },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -493,7 +493,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "InfraCost - GPU Inference Cost Attribution",
-  "uid": "infracost-gpu-cost",
+  "title": "Ballast - GPU Inference Cost Attribution",
+  "uid": "ballast-gpu-cost",
   "version": 1
 }

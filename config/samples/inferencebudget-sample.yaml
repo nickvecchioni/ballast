@@ -1,4 +1,4 @@
-apiVersion: infracost.io/v1alpha1
+apiVersion: ballast.io/v1alpha1
 kind: InferenceBudget
 metadata:
   name: default-budget

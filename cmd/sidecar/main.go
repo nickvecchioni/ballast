@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/nickvecchioni/infracost/pkg/telemetry"
+	"github.com/nickvecchioni/ballast/pkg/telemetry"
 )
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("starting infracost-sidecar",
+	logger.Info("starting ballast-sidecar",
 		"vllm_url", *vllmURL,
 		"model", *modelName,
 		"pod", *podName,
@@ -95,5 +95,5 @@ func main() {
 		logger.Error("http server shutdown error", "err", err)
 	}
 
-	logger.Info("infracost-sidecar stopped")
+	logger.Info("ballast-sidecar stopped")
 }

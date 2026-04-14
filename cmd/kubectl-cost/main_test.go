@@ -8,17 +8,17 @@ import (
 	"testing"
 )
 
-const sampleMetrics = `# HELP infracost_gpu_utilization_percent Current GPU compute utilization (0-100).
-# TYPE infracost_gpu_utilization_percent gauge
-infracost_gpu_utilization_percent{gpu_uuid="GPU-aaa",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 73
-infracost_gpu_utilization_percent{gpu_uuid="GPU-bbb",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 67
-infracost_gpu_utilization_percent{gpu_uuid="GPU-ccc",namespace="recommend",node="gpu-node-01",pod="rec-serve-xyz"} 42
-infracost_gpu_utilization_percent{gpu_uuid="GPU-ddd",namespace="batch",node="gpu-node-02",pod="training-job"} 95
-# HELP infracost_pod_cost_per_hour_usd Estimated cost per hour.
-# TYPE infracost_pod_cost_per_hour_usd gauge
-infracost_pod_cost_per_hour_usd{gpu_type="NVIDIA H100",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 5.46
-infracost_pod_cost_per_hour_usd{gpu_type="NVIDIA A100",namespace="recommend",node="gpu-node-01",pod="rec-serve-xyz"} 0.76
-infracost_pod_cost_per_hour_usd{gpu_type="NVIDIA H100",namespace="batch",node="gpu-node-02",pod="training-job"} 3.71
+const sampleMetrics = `# HELP ballast_gpu_utilization_percent Current GPU compute utilization (0-100).
+# TYPE ballast_gpu_utilization_percent gauge
+ballast_gpu_utilization_percent{gpu_uuid="GPU-aaa",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 73
+ballast_gpu_utilization_percent{gpu_uuid="GPU-bbb",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 67
+ballast_gpu_utilization_percent{gpu_uuid="GPU-ccc",namespace="recommend",node="gpu-node-01",pod="rec-serve-xyz"} 42
+ballast_gpu_utilization_percent{gpu_uuid="GPU-ddd",namespace="batch",node="gpu-node-02",pod="training-job"} 95
+# HELP ballast_pod_cost_per_hour_usd Estimated cost per hour.
+# TYPE ballast_pod_cost_per_hour_usd gauge
+ballast_pod_cost_per_hour_usd{gpu_type="NVIDIA H100",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 5.46
+ballast_pod_cost_per_hour_usd{gpu_type="NVIDIA A100",namespace="recommend",node="gpu-node-01",pod="rec-serve-xyz"} 0.76
+ballast_pod_cost_per_hour_usd{gpu_type="NVIDIA H100",namespace="batch",node="gpu-node-02",pod="training-job"} 3.71
 `
 
 func metricsServer(body string) *httptest.Server {
@@ -191,8 +191,8 @@ func TestHelpFlag(t *testing.T) {
 
 func TestTopPodsOnlyUtilization(t *testing.T) {
 	// Only utilization metric, no cost.
-	utilOnly := `# TYPE infracost_gpu_utilization_percent gauge
-infracost_gpu_utilization_percent{gpu_uuid="GPU-aaa",namespace="search",node="n1",pod="llm-serve"} 80
+	utilOnly := `# TYPE ballast_gpu_utilization_percent gauge
+ballast_gpu_utilization_percent{gpu_uuid="GPU-aaa",namespace="search",node="n1",pod="llm-serve"} 80
 `
 	srv := metricsServer(utilOnly)
 	defer srv.Close()

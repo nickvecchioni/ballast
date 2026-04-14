@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/nickvecchioni/infracost/pkg/attribution"
+	"github.com/nickvecchioni/ballast/pkg/attribution"
 )
 
 // Handlers holds the REST API endpoint handlers.
@@ -77,7 +77,7 @@ func (h *Handlers) Export(w http.ResponseWriter, r *http.Request) {
 	attribution.SortPodsBycost(pods)
 
 	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment; filename=infracost-export.csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=ballast-export.csv")
 	if err := attribution.ExportCSV(w, pods, period); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 	}

@@ -8,9 +8,9 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -trimpath -ldflags='-s -w' -o /infracost-collector ./cmd/collector
+RUN go build -trimpath -ldflags='-s -w' -o /ballast-collector ./cmd/collector
 
 FROM nvidia/cuda:12.4.1-base-ubuntu22.04
 
-COPY --from=builder /infracost-collector /usr/local/bin/infracost-collector
-ENTRYPOINT ["/usr/local/bin/infracost-collector"]
+COPY --from=builder /ballast-collector /usr/local/bin/ballast-collector
+ENTRYPOINT ["/usr/local/bin/ballast-collector"]

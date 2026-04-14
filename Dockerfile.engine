@@ -4,9 +4,9 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /infracost-engine ./cmd/engine
+RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /ballast-engine ./cmd/engine
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=builder /infracost-engine /usr/local/bin/infracost-engine
-ENTRYPOINT ["/usr/local/bin/infracost-engine"]
+COPY --from=builder /ballast-engine /usr/local/bin/ballast-engine
+ENTRYPOINT ["/usr/local/bin/ballast-engine"]

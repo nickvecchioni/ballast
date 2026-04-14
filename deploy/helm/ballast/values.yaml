@@ -15,7 +15,7 @@ serviceAccount:
 # ---------------------------------------------------------------------------
 collector:
   image:
-    repository: ghcr.io/nickvecchioni/infracost-collector
+    repository: ghcr.io/nickvecchioni/ballast-collector
     tag: latest
     pullPolicy: IfNotPresent
 
@@ -70,7 +70,7 @@ collector:
 # ---------------------------------------------------------------------------
 engine:
   image:
-    repository: ghcr.io/nickvecchioni/infracost-engine
+    repository: ghcr.io/nickvecchioni/ballast-engine
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
@@ -87,7 +87,7 @@ engine:
 # ---------------------------------------------------------------------------
 controller:
   image:
-    repository: ghcr.io/nickvecchioni/infracost-controller
+    repository: ghcr.io/nickvecchioni/ballast-controller
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 1
@@ -106,7 +106,7 @@ sidecar:
   # -- Enable the MutatingWebhookConfiguration for sidecar injection.
   enabled: false
   image:
-    repository: ghcr.io/nickvecchioni/infracost-sidecar
+    repository: ghcr.io/nickvecchioni/ballast-sidecar
     tag: latest
     pullPolicy: IfNotPresent
   resources:
@@ -120,7 +120,7 @@ sidecar:
   metricsPort: 9401
   # -- Label on pods that triggers sidecar injection.
   # Pods with this label set to "true" get the sidecar.
-  injectLabel: "infracost.io/inject-sidecar"
+  injectLabel: "ballast.io/inject-sidecar"
   # -- Namespaces to watch for injection. Empty = all namespaces.
   namespaceSelector: {}
 

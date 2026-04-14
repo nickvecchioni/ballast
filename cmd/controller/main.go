@@ -16,9 +16,9 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	v1alpha1 "github.com/nickvecchioni/infracost/api/v1alpha1"
-	"github.com/nickvecchioni/infracost/pkg/attribution"
-	"github.com/nickvecchioni/infracost/pkg/enforcement"
+	v1alpha1 "github.com/nickvecchioni/ballast/api/v1alpha1"
+	"github.com/nickvecchioni/ballast/pkg/attribution"
+	"github.com/nickvecchioni/ballast/pkg/enforcement"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
-	logger.Info("starting infracost-controller",
+	logger.Info("starting ballast-controller",
 		"prometheus", *promURL,
 		"listen", *listenAddr,
 		"interval", interval.String(),
@@ -116,7 +116,7 @@ func main() {
 		logger.Error("http server shutdown error", "err", err)
 	}
 
-	logger.Info("infracost-controller stopped")
+	logger.Info("ballast-controller stopped")
 
 	// Prevent unused import warnings.
 	_ = v1alpha1.GroupVersion

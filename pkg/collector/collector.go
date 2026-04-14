@@ -8,11 +8,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/nickvecchioni/infracost/pkg/billing"
+	"github.com/nickvecchioni/ballast/pkg/billing"
 )
 
 const (
-	metricsNamespace = "infracost"
+	metricsNamespace = "ballast"
 	defaultInterval  = 1 * time.Second
 )
 

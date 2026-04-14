@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "infracost.fullname" . }}-victoriametrics
+  name: {{ include "ballast.fullname" . }}-victoriametrics
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "infracost.labels" . | nindent 4 }}
+    {{- include "ballast.labels" . | nindent 4 }}
     app.kubernetes.io/component: victoriametrics
 spec:
   type: ClusterIP
@@ -20,13 +20,13 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "infracost.fullname" . }}-victoriametrics
+  name: {{ include "ballast.fullname" . }}-victoriametrics
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "infracost.labels" . | nindent 4 }}
+    {{- include "ballast.labels" . | nindent 4 }}
     app.kubernetes.io/component: victoriametrics
 spec:
-  serviceName: {{ include "infracost.fullname" . }}-victoriametrics
+  serviceName: {{ include "ballast.fullname" . }}-victoriametrics
   replicas: 1
   selector:
     matchLabels:
@@ -77,7 +77,7 @@ spec:
       volumes:
         - name: scrape-config
           configMap:
-            name: {{ include "infracost.fullname" . }}-scrape-config
+            name: {{ include "ballast.fullname" . }}-scrape-config
   volumeClaimTemplates:
     - metadata:
         name: storage
@@ -90,15 +90,15 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "infracost.fullname" . }}-scrape-config
+  name: {{ include "ballast.fullname" . }}-scrape-config
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "infracost.labels" . | nindent 4 }}
+    {{- include "ballast.labels" . | nindent 4 }}
 data:
   scrape.yaml: |
     scrape_configs:
-      - job_name: infracost-collector
+      - job_name: ballast-collector
         scrape_interval: 15s
         static_configs:
           - targets:
-              - {{ include "infracost.fullname" . }}-collector.{{ .Release.Namespace }}.svc:{{ .Values.collector.service.port }}
+              - {{ include "ballast.fullname" . }}-collector.{{ .Release.Namespace }}.svc:{{ .Values.collector.service.port }}

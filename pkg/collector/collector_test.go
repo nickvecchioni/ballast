@@ -9,8 +9,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/nickvecchioni/infracost/pkg/billing"
-	"github.com/nickvecchioni/infracost/pkg/models"
+	"github.com/nickvecchioni/ballast/pkg/billing"
+	"github.com/nickvecchioni/ballast/pkg/models"
 )
 
 // --- mocks for the high-level interfaces ---
@@ -127,19 +127,19 @@ func TestCollectOnceJoinsGPUAndPod(t *testing.T) {
 		"node":      "gpu-node-01",
 	}
 
-	if v := gaugeValue(t, reg, "infracost_gpu_utilization_percent", labels); v != 73 {
+	if v := gaugeValue(t, reg, "ballast_gpu_utilization_percent", labels); v != 73 {
 		t.Errorf("utilization = %f, want 73", v)
 	}
-	if v := gaugeValue(t, reg, "infracost_gpu_memory_used_bytes", labels); v != float64(54*1024*1024*1024) {
+	if v := gaugeValue(t, reg, "ballast_gpu_memory_used_bytes", labels); v != float64(54*1024*1024*1024) {
 		t.Errorf("memory used = %f, want %f", v, float64(54*1024*1024*1024))
 	}
-	if v := gaugeValue(t, reg, "infracost_gpu_memory_total_bytes", labels); v != float64(80*1024*1024*1024) {
+	if v := gaugeValue(t, reg, "ballast_gpu_memory_total_bytes", labels); v != float64(80*1024*1024*1024) {
 		t.Errorf("memory total = %f, want %f", v, float64(80*1024*1024*1024))
 	}
-	if v := gaugeValue(t, reg, "infracost_gpu_power_watts", labels); v != 350.0 {
+	if v := gaugeValue(t, reg, "ballast_gpu_power_watts", labels); v != 350.0 {
 		t.Errorf("power = %f, want 350", v)
 	}
-	if v := gaugeValue(t, reg, "infracost_gpu_temperature_celsius", labels); v != 62 {
+	if v := gaugeValue(t, reg, "ballast_gpu_temperature_celsius", labels); v != 62 {
 		t.Errorf("temperature = %f, want 62", v)
 	}
 }
@@ -162,7 +162,7 @@ func TestCollectOnceUnmappedGPU(t *testing.T) {
 		"node":      "gpu-node-01",
 	}
 
-	if v := gaugeValue(t, reg, "infracost_gpu_utilization_percent", labels); v != 10 {
+	if v := gaugeValue(t, reg, "ballast_gpu_utilization_percent", labels); v != 10 {
 		t.Errorf("utilization = %f, want 10", v)
 	}
 }
@@ -184,14 +184,14 @@ func TestCollectOnceMultipleGPUs(t *testing.T) {
 	mc, reg := newTestCollector(t, gpu, pods)
 	mc.CollectOnce(context.Background())
 
-	v1 := gaugeValue(t, reg, "infracost_gpu_utilization_percent", prometheus.Labels{
+	v1 := gaugeValue(t, reg, "ballast_gpu_utilization_percent", prometheus.Labels{
 		"gpu_uuid": "GPU-001", "pod": "pod-a", "namespace": "search", "node": "gpu-node-01",
 	})
 	if v1 != 40 {
 		t.Errorf("gpu-001 utilization = %f, want 40", v1)
 	}
 
-	v2 := gaugeValue(t, reg, "infracost_gpu_utilization_percent", prometheus.Labels{
+	v2 := gaugeValue(t, reg, "ballast_gpu_utilization_percent", prometheus.Labels{
 		"gpu_uuid": "GPU-002", "pod": "pod-b", "namespace": "recommend", "node": "gpu-node-01",
 	})
 	if v2 != 90 {
@@ -225,7 +225,7 @@ func TestCollectResetsStaleMetrics(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	// GPU-001 should have updated value.
-	v := gaugeValue(t, reg, "infracost_gpu_utilization_percent", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_gpu_utilization_percent", prometheus.Labels{
 		"gpu_uuid": "GPU-001", "pod": "pod-a", "namespace": "ns1", "node": "gpu-node-01",
 	})
 	if v != 55 {
@@ -340,12 +340,12 @@ func TestPrometheusMetricNames(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	expected := []string{
-		"infracost_gpu_utilization_percent",
-		"infracost_gpu_memory_used_bytes",
-		"infracost_gpu_memory_total_bytes",
-		"infracost_gpu_power_watts",
-		"infracost_gpu_temperature_celsius",
-		// infracost_pod_cost_per_hour_usd not expected here — no pricing provider
+		"ballast_gpu_utilization_percent",
+		"ballast_gpu_memory_used_bytes",
+		"ballast_gpu_memory_total_bytes",
+		"ballast_gpu_power_watts",
+		"ballast_gpu_temperature_celsius",
+		// ballast_pod_cost_per_hour_usd not expected here — no pricing provider
 	}
 
 	mfs, err := reg.Gather()
@@ -462,7 +462,7 @@ func TestPodRemappingBetweenCycles(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	// Should have new labels, not old.
-	v := gaugeValue(t, reg, "infracost_gpu_utilization_percent", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_gpu_utilization_percent", prometheus.Labels{
 		"gpu_uuid": "GPU-001", "pod": "pod-new", "namespace": "ns-b", "node": "gpu-node-01",
 	})
 	if v != 80 {
@@ -472,7 +472,7 @@ func TestPodRemappingBetweenCycles(t *testing.T) {
 	// Old label combo should be gone.
 	mfs, _ := reg.Gather()
 	for _, mf := range mfs {
-		if mf.GetName() != "infracost_gpu_utilization_percent" {
+		if mf.GetName() != "ballast_gpu_utilization_percent" {
 			continue
 		}
 		for _, m := range mf.GetMetric() {
@@ -501,9 +501,9 @@ func TestMetricOutput(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	expected := `
-		# HELP infracost_gpu_utilization_percent Current GPU compute utilization (0-100).
-		# TYPE infracost_gpu_utilization_percent gauge
-		infracost_gpu_utilization_percent{gpu_uuid="GPU-fmt",namespace="prod",node="gpu-node-01",pod="serve-xyz"} 99
+		# HELP ballast_gpu_utilization_percent Current GPU compute utilization (0-100).
+		# TYPE ballast_gpu_utilization_percent gauge
+		ballast_gpu_utilization_percent{gpu_uuid="GPU-fmt",namespace="prod",node="gpu-node-01",pod="serve-xyz"} 99
 	`
 	if err := testutil.CollectAndCompare(mc.utilization, strings.NewReader(expected)); err != nil {
 		t.Errorf("metric output mismatch:\n%v", err)
@@ -535,7 +535,7 @@ func TestCostPerHourBasic(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	// 50% of $4.00/hr = $2.00/hr
-	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "llm-serve", "namespace": "search", "node": "gpu-node-01", "gpu_type": "NVIDIA H100 80GB HBM3",
 	})
 	if v != 2.0 {
@@ -559,7 +559,7 @@ func TestCostPerHourFullUtilization(t *testing.T) {
 	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
 	mc.CollectOnce(context.Background())
 
-	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "train-job", "namespace": "ml", "node": "gpu-node-01", "gpu_type": "NVIDIA A100",
 	})
 	if v != 1.80 {
@@ -583,7 +583,7 @@ func TestCostPerHourZeroUtilization(t *testing.T) {
 	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
 	mc.CollectOnce(context.Background())
 
-	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "idle-pod", "namespace": "idle", "node": "gpu-node-01", "gpu_type": "NVIDIA L4",
 	})
 	if v != 0 {
@@ -615,7 +615,7 @@ func TestCostAggregatesMultiGPUSamePod(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	// 4 GPUs × 75% × $2.00 = $6.00/hr
-	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "big-job", "namespace": "training", "node": "gpu-node-01", "gpu_type": "NVIDIA A100",
 	})
 	if v != 6.0 {
@@ -644,14 +644,14 @@ func TestCostMultiplePodsMultipleTypes(t *testing.T) {
 	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
 	mc.CollectOnce(context.Background())
 
-	v1 := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v1 := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "serve-a", "namespace": "search", "node": "gpu-node-01", "gpu_type": "NVIDIA H100",
 	})
 	if v1 != 4.0 {
 		t.Errorf("serve-a cost = %f, want 4.0", v1)
 	}
 
-	v2 := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v2 := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "serve-b", "namespace": "batch", "node": "gpu-node-01", "gpu_type": "NVIDIA L4",
 	})
 	if v2 != 0.30 {
@@ -678,7 +678,7 @@ func TestCostFallbackPrice(t *testing.T) {
 	mc, reg := newTestCollectorWithPricing(t, gpu, pods, pricing)
 	mc.CollectOnce(context.Background())
 
-	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "pod", "namespace": "ns", "node": "gpu-node-01", "gpu_type": "UNKNOWN GPU",
 	})
 	if v != 1.50 {
@@ -707,7 +707,7 @@ func TestCostNotEmittedWithoutPricing(t *testing.T) {
 		t.Fatalf("gather: %v", err)
 	}
 	for _, mf := range mfs {
-		if mf.GetName() == "infracost_pod_cost_per_hour_usd" {
+		if mf.GetName() == "ballast_pod_cost_per_hour_usd" {
 			t.Error("cost metric should not be emitted without a pricing provider")
 		}
 	}
@@ -726,7 +726,7 @@ func TestCostUnmappedGPU(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	// Unmapped GPU still gets a cost entry with empty pod/namespace.
-	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "", "namespace": "", "node": "gpu-node-01", "gpu_type": "NVIDIA H100",
 	})
 	// 80% × $4.00 = $3.20
@@ -763,7 +763,7 @@ func TestCostResetsOnNewCycle(t *testing.T) {
 	mc.CollectOnce(context.Background())
 
 	// pod-a cost updated: 80% × $2.00 = $1.60
-	v := gaugeValue(t, reg, "infracost_pod_cost_per_hour_usd", prometheus.Labels{
+	v := gaugeValue(t, reg, "ballast_pod_cost_per_hour_usd", prometheus.Labels{
 		"pod": "pod-a", "namespace": "ns", "node": "gpu-node-01", "gpu_type": "NVIDIA A100",
 	})
 	if v != 1.60 {
@@ -773,7 +773,7 @@ func TestCostResetsOnNewCycle(t *testing.T) {
 	// pod-b cost should be gone.
 	mfs, _ := reg.Gather()
 	for _, mf := range mfs {
-		if mf.GetName() != "infracost_pod_cost_per_hour_usd" {
+		if mf.GetName() != "ballast_pod_cost_per_hour_usd" {
 			continue
 		}
 		for _, m := range mf.GetMetric() {
@@ -804,9 +804,9 @@ func TestCostMetricOutput(t *testing.T) {
 
 	// 73% × $3.90 = $2.847
 	expected := `
-		# HELP infracost_pod_cost_per_hour_usd Estimated cost per hour in USD based on GPU utilization and pricing.
-		# TYPE infracost_pod_cost_per_hour_usd gauge
-		infracost_pod_cost_per_hour_usd{gpu_type="NVIDIA H100",namespace="search",node="gpu-node-01",pod="llm-serve"} 2.847
+		# HELP ballast_pod_cost_per_hour_usd Estimated cost per hour in USD based on GPU utilization and pricing.
+		# TYPE ballast_pod_cost_per_hour_usd gauge
+		ballast_pod_cost_per_hour_usd{gpu_type="NVIDIA H100",namespace="search",node="gpu-node-01",pod="llm-serve"} 2.847
 	`
 	if err := testutil.CollectAndCompare(mc.costPerHour, strings.NewReader(expected)); err != nil {
 		t.Errorf("cost metric output mismatch:\n%v", err)

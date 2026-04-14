@@ -53,7 +53,7 @@ func (s *SlackNotifier) Send(ctx context.Context, alert Alert) error {
 	}
 
 	text := fmt.Sprintf(
-		"%s *InfraCost Budget Alert*\n"+
+		"%s *Ballast Budget Alert*\n"+
 			"Namespace: `%s` | Budget: `%s`\n"+
 			"Threshold: *%d%%* reached\n"+
 			"Current Spend: *$%.2f* / $%.2f (%.1f%%)\n"+
@@ -117,11 +117,11 @@ func (p *PagerDutyNotifier) Send(ctx context.Context, alert Alert) error {
 	event := map[string]any{
 		"routing_key":  p.RoutingKey,
 		"event_action": "trigger",
-		"dedup_key":    fmt.Sprintf("infracost-%s-%s-%d", alert.Namespace, alert.BudgetName, alert.ThresholdPct),
+		"dedup_key":    fmt.Sprintf("ballast-%s-%s-%d", alert.Namespace, alert.BudgetName, alert.ThresholdPct),
 		"payload": map[string]any{
-			"summary":  fmt.Sprintf("InfraCost: %s budget %d%% threshold reached ($%.2f/$%.2f)", alert.Namespace, alert.ThresholdPct, alert.CurrentSpend, alert.MonthlyBudget),
+			"summary":  fmt.Sprintf("Ballast: %s budget %d%% threshold reached ($%.2f/$%.2f)", alert.Namespace, alert.ThresholdPct, alert.CurrentSpend, alert.MonthlyBudget),
 			"severity": severity,
-			"source":   "infracost",
+			"source":   "ballast",
 			"group":    alert.Namespace,
 			"custom_details": map[string]any{
 				"namespace":       alert.Namespace,

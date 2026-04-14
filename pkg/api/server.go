@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/nickvecchioni/infracost/pkg/attribution"
+	"github.com/nickvecchioni/ballast/pkg/attribution"
 )
 
 // ServerOpts configures the API server.

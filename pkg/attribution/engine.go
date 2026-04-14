@@ -95,7 +95,7 @@ func (e *Engine) CostByPods(ctx context.Context, namespace string, period Period
 
 	// Get average cost rate over the period.
 	costQuery := fmt.Sprintf(
-		`avg_over_time(infracost_pod_cost_per_hour_usd{%s}[%s])`,
+		`avg_over_time(ballast_pod_cost_per_hour_usd{%s}[%s])`,
 		nsFilter, promDuration(period),
 	)
 	costSamples, err := e.store.Query(ctx, costQuery, period.End)
@@ -105,7 +105,7 @@ func (e *Engine) CostByPods(ctx context.Context, namespace string, period Period
 
 	// Get average utilization over the period.
 	utilQuery := fmt.Sprintf(
-		`avg by (pod, namespace, node) (avg_over_time(infracost_gpu_utilization_percent{%s}[%s]))`,
+		`avg by (pod, namespace, node) (avg_over_time(ballast_gpu_utilization_percent{%s}[%s]))`,
 		nsFilter, promDuration(period),
 	)
 	utilSamples, err := e.store.Query(ctx, utilQuery, period.End)
@@ -141,7 +141,7 @@ func (e *Engine) CostByPods(ctx context.Context, namespace string, period Period
 // CostByNamespaces returns aggregated cost per namespace.
 func (e *Engine) CostByNamespaces(ctx context.Context, period Period) ([]NamespaceCost, error) {
 	costQuery := fmt.Sprintf(
-		`sum by (namespace) (avg_over_time(infracost_pod_cost_per_hour_usd[%s]))`,
+		`sum by (namespace) (avg_over_time(ballast_pod_cost_per_hour_usd[%s]))`,
 		promDuration(period),
 	)
 	costSamples, err := e.store.Query(ctx, costQuery, period.End)
@@ -150,7 +150,7 @@ func (e *Engine) CostByNamespaces(ctx context.Context, period Period) ([]Namespa
 	}
 
 	utilQuery := fmt.Sprintf(
-		`avg by (namespace) (avg_over_time(infracost_gpu_utilization_percent[%s]))`,
+		`avg by (namespace) (avg_over_time(ballast_gpu_utilization_percent[%s]))`,
 		promDuration(period),
 	)
 	utilSamples, err := e.store.Query(ctx, utilQuery, period.End)
@@ -159,7 +159,7 @@ func (e *Engine) CostByNamespaces(ctx context.Context, period Period) ([]Namespa
 	}
 
 	countQuery := fmt.Sprintf(
-		`count by (namespace) (avg_over_time(infracost_gpu_utilization_percent[%s]))`,
+		`count by (namespace) (avg_over_time(ballast_gpu_utilization_percent[%s]))`,
 		promDuration(period),
 	)
 	countSamples, err := e.store.Query(ctx, countQuery, period.End)

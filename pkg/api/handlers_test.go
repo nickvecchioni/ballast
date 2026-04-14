@@ -9,20 +9,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nickvecchioni/infracost/pkg/attribution"
+	"github.com/nickvecchioni/ballast/pkg/attribution"
 )
 
 // mockStore returns canned data for all queries.
 type mockStore struct{}
 
 func (m *mockStore) Query(_ context.Context, promql string, _ time.Time) ([]attribution.MetricSample, error) {
-	if strings.Contains(promql, "infracost_pod_cost_per_hour_usd") && !strings.Contains(promql, "sum by") {
+	if strings.Contains(promql, "ballast_pod_cost_per_hour_usd") && !strings.Contains(promql, "sum by") {
 		return []attribution.MetricSample{
 			{Labels: map[string]string{"pod": "serve-a", "namespace": "search", "node": "n1", "gpu_type": "H100"}, Value: 3.90},
 			{Labels: map[string]string{"pod": "serve-b", "namespace": "batch", "node": "n1", "gpu_type": "A100"}, Value: 1.80},
 		}, nil
 	}
-	if strings.Contains(promql, "infracost_gpu_utilization_percent") && !strings.Contains(promql, "sum by") && !strings.Contains(promql, "avg by") && !strings.Contains(promql, "count by") {
+	if strings.Contains(promql, "ballast_gpu_utilization_percent") && !strings.Contains(promql, "sum by") && !strings.Contains(promql, "avg by") && !strings.Contains(promql, "count by") {
 		return []attribution.MetricSample{
 			{Labels: map[string]string{"pod": "serve-a", "namespace": "search", "node": "n1"}, Value: 73},
 			{Labels: map[string]string{"pod": "serve-b", "namespace": "batch", "node": "n1"}, Value: 45},

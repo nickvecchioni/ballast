@@ -8,13 +8,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const inferenceNamespace = "infracost_inference"
+const inferenceNamespace = "ballast_inference"
 
 var inferenceLabels = []string{"pod", "namespace", "node", "model_name"}
 
 // InferenceExporter is a prometheus.Collector that scrapes an inference
 // server on each Prometheus collection and re-exposes the metrics with
-// infracost_inference_ prefix and pod-level labels.
+// ballast_inference_ prefix and pod-level labels.
 type InferenceExporter struct {
 	scraper    Scraper
 	labels     prometheus.Labels
@@ -42,7 +42,7 @@ type InferenceExporterOpts struct {
 }
 
 // NewInferenceExporter creates an exporter that re-exposes inference
-// server metrics with the infracost_inference_ prefix.
+// server metrics with the ballast_inference_ prefix.
 func NewInferenceExporter(opts InferenceExporterOpts) *InferenceExporter {
 	if opts.ScrapeTimeout == 0 {
 		opts.ScrapeTimeout = 5 * time.Second

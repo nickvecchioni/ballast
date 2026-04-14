@@ -1,11 +1,11 @@
-InfraCost GPU metrics collector installed.
+Ballast GPU metrics collector installed.
 
 The collector DaemonSet is running on GPU nodes and exposing metrics on port {{ .Values.collector.metricsPort }}.
 
 To view raw Prometheus metrics:
 
   kubectl port-forward -n {{ .Release.Namespace }} \
-    svc/{{ include "infracost.fullname" . }}-collector {{ .Values.collector.service.port }}:{{ .Values.collector.service.port }}
+    svc/{{ include "ballast.fullname" . }}-collector {{ .Values.collector.service.port }}:{{ .Values.collector.service.port }}
 
   curl http://localhost:{{ .Values.collector.service.port }}/metrics
 

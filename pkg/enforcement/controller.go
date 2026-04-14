@@ -9,8 +9,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1alpha1 "github.com/nickvecchioni/infracost/api/v1alpha1"
-	"github.com/nickvecchioni/infracost/pkg/attribution"
+	v1alpha1 "github.com/nickvecchioni/ballast/api/v1alpha1"
+	"github.com/nickvecchioni/ballast/pkg/attribution"
 )
 
 // BudgetStore abstracts reading and updating InferenceBudget CRs so we

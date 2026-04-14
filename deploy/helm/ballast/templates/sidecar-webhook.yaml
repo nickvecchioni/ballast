@@ -2,17 +2,17 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: {{ include "infracost.fullname" . }}-sidecar-injector
+  name: {{ include "ballast.fullname" . }}-sidecar-injector
   labels:
-    {{- include "infracost.labels" . | nindent 4 }}
+    {{- include "ballast.labels" . | nindent 4 }}
 webhooks:
-  - name: sidecar.infracost.io
+  - name: sidecar.ballast.io
     admissionReviewVersions: ["v1"]
     sideEffects: None
     reinvocationPolicy: IfNeeded
     clientConfig:
       service:
-        name: {{ include "infracost.fullname" . }}-controller
+        name: {{ include "ballast.fullname" . }}-controller
         namespace: {{ .Release.Namespace }}
         path: /mutate-pod-sidecar
     rules:

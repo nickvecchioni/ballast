@@ -1,4 +1,4 @@
-module github.com/nickvecchioni/infracost
+module github.com/nickvecchioni/ballast
 
 go 1.25.6
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# End-to-end test script for InfraCost on a GPU VM.
+# End-to-end test script for Ballast on a GPU VM.
 # Covers Layer 2 (standalone NVML) and Layer 3 (k3s + Helm + vLLM).
 #
 # Prerequisites: NVIDIA drivers installed, nvidia-smi works.
@@ -152,25 +152,25 @@ kubectl wait --for=condition=Ready pod/vllm-test --timeout=600s || {
 echo "vLLM is running"
 
 # ---------------------------------------------------------------------------
-# Build and load InfraCost collector image
+# Build and load Ballast collector image
 # ---------------------------------------------------------------------------
-step "Building InfraCost collector image"
+step "Building Ballast collector image"
 
-docker build -f Dockerfile.collector -t infracost-collector:test . 2>&1 | tail -5
+docker build -f Dockerfile.collector -t ballast-collector:test . 2>&1 | tail -5
 
 # Import into k3s containerd
-docker save infracost-collector:test | sudo k3s ctr images import -
+docker save ballast-collector:test | sudo k3s ctr images import -
 echo "Image loaded into k3s"
 
 # ---------------------------------------------------------------------------
-# Helm install InfraCost
+# Helm install Ballast
 # ---------------------------------------------------------------------------
-step "Installing InfraCost via Helm"
+step "Installing Ballast via Helm"
 
 # Override nodeSelector since TensorDock nodes may not have the label
-helm install infracost deploy/helm/infracost \
-    --namespace infracost --create-namespace \
-    --set collector.image.repository=infracost-collector \
+helm install ballast deploy/helm/ballast \
+    --namespace ballast --create-namespace \
+    --set collector.image.repository=ballast-collector \
     --set collector.image.tag=test \
     --set collector.image.pullPolicy=Never \
     --set collector.nodeSelector=null \
@@ -178,10 +178,10 @@ helm install infracost deploy/helm/infracost \
     --set pricing.gpu_types.NVIDIA-Tesla-V100-SXM3-32GB.cost_per_hour_usd=0.29
 
 echo "Waiting for collector pod..."
-kubectl -n infracost wait --for=condition=Ready pod -l app.kubernetes.io/component=collector --timeout=120s || {
+kubectl -n ballast wait --for=condition=Ready pod -l app.kubernetes.io/component=collector --timeout=120s || {
     echo "Collector pod status:"
-    kubectl -n infracost describe pod -l app.kubernetes.io/component=collector
-    kubectl -n infracost logs -l app.kubernetes.io/component=collector --tail=50
+    kubectl -n ballast describe pod -l app.kubernetes.io/component=collector
+    kubectl -n ballast logs -l app.kubernetes.io/component=collector --tail=50
     fail "Collector pod did not become ready"
 }
 
@@ -191,18 +191,18 @@ kubectl -n infracost wait --for=condition=Ready pod -l app.kubernetes.io/compone
 step "Validating metrics"
 
 sleep 5
-COLLECTOR_POD=$(kubectl -n infracost get pod -l app.kubernetes.io/component=collector -o jsonpath='{.items[0].metadata.name}')
+COLLECTOR_POD=$(kubectl -n ballast get pod -l app.kubernetes.io/component=collector -o jsonpath='{.items[0].metadata.name}')
 
 echo "Raw metrics from collector:"
-kubectl -n infracost exec "$COLLECTOR_POD" -- wget -qO- http://localhost:9400/metrics 2>/dev/null | grep "^infracost_" | head -20
+kubectl -n ballast exec "$COLLECTOR_POD" -- wget -qO- http://localhost:9400/metrics 2>/dev/null | grep "^ballast_" | head -20
 
 echo ""
 echo "GPU utilization:"
-kubectl -n infracost exec "$COLLECTOR_POD" -- wget -qO- http://localhost:9400/metrics 2>/dev/null | grep "infracost_gpu_utilization_percent"
+kubectl -n ballast exec "$COLLECTOR_POD" -- wget -qO- http://localhost:9400/metrics 2>/dev/null | grep "ballast_gpu_utilization_percent"
 
 echo ""
 echo "Pod cost:"
-kubectl -n infracost exec "$COLLECTOR_POD" -- wget -qO- http://localhost:9400/metrics 2>/dev/null | grep "infracost_pod_cost_per_hour_usd"
+kubectl -n ballast exec "$COLLECTOR_POD" -- wget -qO- http://localhost:9400/metrics 2>/dev/null | grep "ballast_pod_cost_per_hour_usd"
 
 # ---------------------------------------------------------------------------
 # Test kubectl-cost
@@ -212,7 +212,7 @@ step "Testing kubectl-cost plugin"
 go build -o /tmp/kubectl-cost ./cmd/kubectl-cost
 
 # Port-forward in background
-kubectl -n infracost port-forward svc/infracost-collector 9400:9400 &
+kubectl -n ballast port-forward svc/ballast-collector 9400:9400 &
 PF_PID=$!
 sleep 2
 
@@ -240,7 +240,7 @@ sleep 5
 
 echo ""
 echo "Metrics after load:"
-kubectl -n infracost port-forward svc/infracost-collector 9400:9400 &
+kubectl -n ballast port-forward svc/ballast-collector 9400:9400 &
 PF_PID=$!
 sleep 2
 /tmp/kubectl-cost top pods --all-namespaces --metrics-url http://localhost:9400/metrics
@@ -260,5 +260,5 @@ echo "  - kubectl-cost:     OK"
 echo ""
 echo "To clean up:"
 echo "  kubectl delete pod vllm-test"
-echo "  helm uninstall infracost -n infracost"
+echo "  helm uninstall ballast -n ballast"
 echo "  /usr/local/bin/k3s-uninstall.sh"

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nickvecchioni/infracost/pkg/collector"
+	"github.com/nickvecchioni/ballast/pkg/collector"
 )
 
 func main() {
-	fmt.Println("=== InfraCost NVML Test ===")
+	fmt.Println("=== Ballast NVML Test ===")
 	fmt.Println()
 
 	c, err := collector.NewNVMLCollector()

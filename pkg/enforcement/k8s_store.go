@@ -11,11 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 
-	v1alpha1 "github.com/nickvecchioni/infracost/api/v1alpha1"
+	v1alpha1 "github.com/nickvecchioni/ballast/api/v1alpha1"
 )
 
 var budgetGVR = schema.GroupVersionResource{
-	Group:    "infracost.io",
+	Group:    "ballast.io",
 	Version:  "v1alpha1",
 	Resource: "inferencebudgets",
 }

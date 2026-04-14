@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "infracost.name" -}}
+{{- define "ballast.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Fullname: release-name truncated to 63 chars.
 */}}
-{{- define "infracost.fullname" -}}
+{{- define "ballast.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,41 +24,41 @@ Fullname: release-name truncated to 63 chars.
 {{/*
 Common labels applied to every resource.
 */}}
-{{- define "infracost.labels" -}}
+{{- define "ballast.labels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{ include "infracost.selectorLabels" . }}
+{{ include "ballast.selectorLabels" . }}
 {{- end }}
 
 {{/*
 Selector labels (subset used in matchLabels).
 */}}
-{{- define "infracost.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "infracost.name" . }}
+{{- define "ballast.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "ballast.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 ServiceAccount name.
 */}}
-{{- define "infracost.serviceAccountName" -}}
+{{- define "ballast.serviceAccountName" -}}
 {{- if .Values.serviceAccount.name }}
 {{- .Values.serviceAccount.name }}
 {{- else }}
-{{- include "infracost.fullname" . }}
+{{- include "ballast.fullname" . }}
 {{- end }}
 {{- end }}
 
 {{/*
 Collector component labels.
 */}}
-{{- define "infracost.collector.labels" -}}
-{{ include "infracost.labels" . }}
+{{- define "ballast.collector.labels" -}}
+{{ include "ballast.labels" . }}
 app.kubernetes.io/component: collector
 {{- end }}
 
-{{- define "infracost.collector.selectorLabels" -}}
-{{ include "infracost.selectorLabels" . }}
+{{- define "ballast.collector.selectorLabels" -}}
+{{ include "ballast.selectorLabels" . }}
 app.kubernetes.io/component: collector
 {{- end }}

@@ -1,4 +1,4 @@
-MODULE := github.com/nickvecchioni/infracost
+MODULE := github.com/nickvecchioni/ballast
 BINDIR := bin
 GOFLAGS := -trimpath
 LDFLAGS := -s -w
@@ -12,19 +12,19 @@ all: build
 build: $(BINARIES)
 
 collector:
-	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/infracost-collector ./cmd/collector
+	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/ballast-collector ./cmd/collector
 
 engine:
-	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/infracost-engine ./cmd/engine
+	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/ballast-engine ./cmd/engine
 
 controller:
-	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/infracost-controller ./cmd/controller
+	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/ballast-controller ./cmd/controller
 
 kubectl-cost:
 	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/kubectl-cost ./cmd/kubectl-cost
 
 sidecar:
-	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/infracost-sidecar ./cmd/sidecar
+	go build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $(BINDIR)/ballast-sidecar ./cmd/sidecar
 
 test:
 	go test ./... -race -count=1
@@ -42,16 +42,16 @@ clean:
 	rm -rf $(BINDIR)
 
 docker-collector:
-	docker build -f Dockerfile.collector -t infracost-collector:latest .
+	docker build -f Dockerfile.collector -t ballast-collector:latest .
 
 docker-engine:
-	docker build -f Dockerfile.engine -t infracost-engine:latest .
+	docker build -f Dockerfile.engine -t ballast-engine:latest .
 
 docker-controller:
-	docker build -f Dockerfile.controller -t infracost-controller:latest .
+	docker build -f Dockerfile.controller -t ballast-controller:latest .
 
 helm-template:
-	helm template infracost deploy/helm/infracost
+	helm template ballast deploy/helm/ballast
 
 helm-install:
-	helm install infracost deploy/helm/infracost
+	helm install ballast deploy/helm/ballast

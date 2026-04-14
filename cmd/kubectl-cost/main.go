@@ -17,15 +17,15 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 
-	"github.com/nickvecchioni/infracost/pkg/attribution"
+	"github.com/nickvecchioni/ballast/pkg/attribution"
 )
 
 const (
 	defaultMetricsURL = "http://localhost:9400/metrics"
 	defaultEngineURL  = "http://localhost:8080"
 
-	costMetricName = "infracost_pod_cost_per_hour_usd"
-	utilMetricName = "infracost_gpu_utilization_percent"
+	costMetricName = "ballast_pod_cost_per_hour_usd"
+	utilMetricName = "ballast_gpu_utilization_percent"
 )
 
 func main() {

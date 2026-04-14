@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "infracost.fullname" . }}-collector
+  name: {{ include "ballast.fullname" . }}-collector
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "infracost.collector.labels" . | nindent 4 }}
+    {{- include "ballast.collector.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.collector.service.type }}
   ports:
@@ -13,4 +13,4 @@ spec:
       protocol: TCP
       name: metrics
   selector:
-    {{- include "infracost.collector.selectorLabels" . | nindent 4 }}
+    {{- include "ballast.collector.selectorLabels" . | nindent 4 }}

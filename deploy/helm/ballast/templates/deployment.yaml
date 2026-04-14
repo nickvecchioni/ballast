@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "infracost.fullname" . }}-engine
+  name: {{ include "ballast.fullname" . }}-engine
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "infracost.labels" . | nindent 4 }}
+    {{- include "ballast.labels" . | nindent 4 }}
     app.kubernetes.io/component: engine
 spec:
   replicas: {{ .Values.engine.replicas }}
@@ -18,13 +18,13 @@ spec:
         app.kubernetes.io/component: engine
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      serviceAccountName: {{ include "infracost.serviceAccountName" . }}
+      serviceAccountName: {{ include "ballast.serviceAccountName" . }}
       containers:
         - name: engine
           image: "{{ .Values.engine.image.repository }}:{{ .Values.engine.image.tag }}"
           imagePullPolicy: {{ .Values.engine.image.pullPolicy }}
           args:
-            - --prometheus-url=http://{{ include "infracost.fullname" . }}-victoriametrics:8428
+            - --prometheus-url=http://{{ include "ballast.fullname" . }}-victoriametrics:8428
             - --listen-address=:8080
           ports:
             - name: http
@@ -47,10 +47,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "infracost.fullname" . }}-engine
+  name: {{ include "ballast.fullname" . }}-engine
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "infracost.labels" . | nindent 4 }}
+    {{- include "ballast.labels" . | nindent 4 }}
     app.kubernetes.io/component: engine
 spec:
   type: ClusterIP

@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	// GroupVersion is the API group and version for infracost CRDs.
-	GroupVersion = schema.GroupVersion{Group: "infracost.io", Version: "v1alpha1"}
+	// GroupVersion is the API group and version for ballast CRDs.
+	GroupVersion = schema.GroupVersion{Group: "ballast.io", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add Go types to the GroupVersionResource scheme.
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)

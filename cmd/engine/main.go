@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nickvecchioni/infracost/pkg/api"
-	"github.com/nickvecchioni/infracost/pkg/attribution"
+	"github.com/nickvecchioni/ballast/pkg/api"
+	"github.com/nickvecchioni/ballast/pkg/attribution"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
-	logger.Info("starting infracost-engine",
+	logger.Info("starting ballast-engine",
 		"prometheus", *promURL,
 		"listen", *listenAddr,
 	)
@@ -64,5 +64,5 @@ func main() {
 		logger.Error("http server shutdown error", "err", err)
 	}
 
-	logger.Info("infracost-engine stopped")
+	logger.Info("ballast-engine stopped")
 }

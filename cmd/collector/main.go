@@ -14,8 +14,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/nickvecchioni/infracost/pkg/billing"
-	"github.com/nickvecchioni/infracost/pkg/collector"
+	"github.com/nickvecchioni/ballast/pkg/billing"
+	"github.com/nickvecchioni/ballast/pkg/collector"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("starting infracost-collector",
+	logger.Info("starting ballast-collector",
 		"node", *nodeName,
 		"listen", *listenAddr,
 		"socket", *socketPath,
@@ -142,5 +142,5 @@ func main() {
 		logger.Error("http server shutdown error", "err", err)
 	}
 
-	logger.Info("infracost-collector stopped")
+	logger.Info("ballast-collector stopped")
 }

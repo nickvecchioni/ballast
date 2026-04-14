@@ -1,8 +1,8 @@
-# InfraCost: Inference Cost Intelligence Platform
+# Ballast: Inference Cost Intelligence Platform
 
 ## Design Document & MVP Roadmap
 
-*Working name: `infracost` (CLI: `kubectl cost`)*
+*Working name: `ballast` (CLI: `kubectl cost`)*
 *Author: Nick Vecchioni | March 2026*
 
 ---
@@ -153,14 +153,14 @@ eBPF (Future): Attach to the inference server's network socket at the kernel lev
 **Enrichment labels applied:**
 
 ```
-infracost_model_name="llama-3-70b"
-infracost_team="search"
-infracost_namespace="search-prod"
-infracost_deployment="llm-serve"
-infracost_node="gpu-node-0a3f"
-infracost_gpu_uuid="GPU-a1b2c3d4"
-infracost_gpu_type="NVIDIA-H100-SXM5-80GB"
-infracost_instance_type="p5.48xlarge"
+ballast_model_name="llama-3-70b"
+ballast_team="search"
+ballast_namespace="search-prod"
+ballast_deployment="llm-serve"
+ballast_node="gpu-node-0a3f"
+ballast_gpu_uuid="GPU-a1b2c3d4"
+ballast_gpu_type="NVIDIA-H100-SXM5-80GB"
+ballast_instance_type="p5.48xlarge"
 ```
 
 #### 4.1.3 K8s metadata enricher
@@ -174,14 +174,14 @@ infracost_instance_type="p5.48xlarge"
 ```yaml
 # On Pods/Deployments:
 labels:
-  infracost.io/team: "search"
-  infracost.io/cost-center: "eng-search-123"
-  infracost.io/environment: "production"
+  ballast.io/team: "search"
+  ballast.io/cost-center: "eng-search-123"
+  ballast.io/environment: "production"
 
 # On Namespaces:
 annotations:
-  infracost.io/budget-owner: "alice@company.com"
-  infracost.io/monthly-budget: "15000"
+  ballast.io/budget-owner: "alice@company.com"
+  ballast.io/monthly-budget: "15000"
 ```
 
 If labels aren't present, fall back to namespace name as the team identifier. The goal is zero-config basic functionality, with labels enabling richer attribution.
@@ -196,7 +196,7 @@ If labels aren't present, fall back to namespace name as the team identifier. Th
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: infracost-pricing
+  name: ballast-pricing
 data:
   pricing.yaml: |
     gpu_types:
@@ -278,7 +278,7 @@ Deploy as a StatefulSet within the Helm chart. For the hosted/SaaS version, use 
 **InferenceBudget CRD:**
 
 ```yaml
-apiVersion: infracost.io/v1alpha1
+apiVersion: ballast.io/v1alpha1
 kind: InferenceBudget
 metadata:
   name: search-team-budget
@@ -339,7 +339,7 @@ status:
 **InferenceCostReport CRD (read-only, controller-generated):**
 
 ```yaml
-apiVersion: infracost.io/v1alpha1
+apiVersion: ballast.io/v1alpha1
 kind: InferenceCostReport
 metadata:
   name: search-2026-03-weekly-12
@@ -385,7 +385,7 @@ Standard K8s controller pattern using controller-runtime:
 4. Update InferenceBudget status subresource
 5. If thresholds crossed: fire alerts, update routing policies, or mark namespace as over-budget
 
-The controller writes a `infracost.io/budget-status` annotation on the namespace:
+The controller writes a `ballast.io/budget-status` annotation on the namespace:
 - `ok` — under 75%
 - `warning` — 75-90%
 - `critical` — 90-100%
@@ -474,7 +474,7 @@ Auth: ServiceAccount token validation for in-cluster access. API key for externa
 ## 5. Repo structure
 
 ```
-infracost/
+ballast/
 ├── cmd/
 │   ├── collector/          # DaemonSet binary
 │   │   └── main.go
@@ -529,7 +529,7 @@ infracost/
 │   └── samples/            # Example CRs
 ├── deploy/
 │   └── helm/
-│       └── infracost/
+│       └── ballast/
 │           ├── Chart.yaml
 │           ├── values.yaml
 │           ├── templates/
@@ -596,7 +596,7 @@ Here's what happens when a user sends an inference request to a vLLM pod:
    - Cost per million tokens: $1.71
 
 6. Engine writes to VictoriaMetrics:
-   infracost_pod_cost_usd{namespace="search",pod="llm-serve-abc",
+   ballast_pod_cost_usd{namespace="search",pod="llm-serve-abc",
      model="llama-3-70b",team="search"} 0.047
 
 7. Budget Controller checks:
@@ -643,7 +643,7 @@ Here's what happens when a user sends an inference request to a vLLM pod:
 - [ ] Implement the inference sidecar binary (or initially just run it as part of the DaemonSet for simplicity)
 - [ ] Add token count metrics enriched with pod labels
 - [ ] Implement `pkg/billing/static.go` — ConfigMap-based GPU pricing
-- [ ] Compute and expose `infracost_pod_cost_per_hour` metric
+- [ ] Compute and expose `ballast_pod_cost_per_hour` metric
 
 **Week 3:**
 - [ ] Implement `cmd/kubectl-cost/main.go` — basic `kubectl cost top pods`
@@ -652,7 +652,7 @@ Here's what happens when a user sends an inference request to a vLLM pod:
 - [ ] Write README with screenshots, quick-start guide
 - [ ] Publish to GitHub, post on Hacker News / Reddit r/kubernetes
 
-**Exit criteria:** `helm install infracost ./deploy/helm/infracost` on a GPU K8s cluster gives you per-pod GPU cost in Prometheus/Grafana and via `kubectl cost top pods`. Open-source, Apache 2.0 license.
+**Exit criteria:** `helm install ballast ./deploy/helm/ballast` on a GPU K8s cluster gives you per-pod GPU cost in Prometheus/Grafana and via `kubectl cost top pods`. Open-source, Apache 2.0 license.
 
 ### Phase 2: Attribution engine + basic enforcement (3-4 weeks)
 

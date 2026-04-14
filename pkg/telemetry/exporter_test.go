@@ -48,21 +48,21 @@ func TestExporterCounters(t *testing.T) {
 	_, reg := newTestExporter(scraper)
 
 	expected := `
-		# HELP infracost_inference_prompt_tokens_total Cumulative number of prompt (input) tokens processed.
-		# TYPE infracost_inference_prompt_tokens_total counter
-		infracost_inference_prompt_tokens_total{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 2.45e+06
-		# HELP infracost_inference_generation_tokens_total Cumulative number of generation (output) tokens produced.
-		# TYPE infracost_inference_generation_tokens_total counter
-		infracost_inference_generation_tokens_total{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 890000
-		# HELP infracost_inference_requests_total Cumulative number of completed inference requests.
-		# TYPE infracost_inference_requests_total counter
-		infracost_inference_requests_total{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 15234
+		# HELP ballast_inference_prompt_tokens_total Cumulative number of prompt (input) tokens processed.
+		# TYPE ballast_inference_prompt_tokens_total counter
+		ballast_inference_prompt_tokens_total{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 2.45e+06
+		# HELP ballast_inference_generation_tokens_total Cumulative number of generation (output) tokens produced.
+		# TYPE ballast_inference_generation_tokens_total counter
+		ballast_inference_generation_tokens_total{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 890000
+		# HELP ballast_inference_requests_total Cumulative number of completed inference requests.
+		# TYPE ballast_inference_requests_total counter
+		ballast_inference_requests_total{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 15234
 	`
 
 	if err := testutil.GatherAndCompare(reg, strings.NewReader(expected),
-		"infracost_inference_prompt_tokens_total",
-		"infracost_inference_generation_tokens_total",
-		"infracost_inference_requests_total",
+		"ballast_inference_prompt_tokens_total",
+		"ballast_inference_generation_tokens_total",
+		"ballast_inference_requests_total",
 	); err != nil {
 		t.Errorf("counter mismatch:\n%v", err)
 	}
@@ -81,21 +81,21 @@ func TestExporterGauges(t *testing.T) {
 	_, reg := newTestExporter(scraper)
 
 	expected := `
-		# HELP infracost_inference_requests_running Number of inference requests currently in flight.
-		# TYPE infracost_inference_requests_running gauge
-		infracost_inference_requests_running{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 3
-		# HELP infracost_inference_gpu_cache_usage_percent GPU KV-cache utilization (0-1).
-		# TYPE infracost_inference_gpu_cache_usage_percent gauge
-		infracost_inference_gpu_cache_usage_percent{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 0.67
-		# HELP infracost_inference_generation_throughput_tokens_per_second Average generation throughput in tokens per second.
-		# TYPE infracost_inference_generation_throughput_tokens_per_second gauge
-		infracost_inference_generation_throughput_tokens_per_second{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 2340.5
+		# HELP ballast_inference_requests_running Number of inference requests currently in flight.
+		# TYPE ballast_inference_requests_running gauge
+		ballast_inference_requests_running{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 3
+		# HELP ballast_inference_gpu_cache_usage_percent GPU KV-cache utilization (0-1).
+		# TYPE ballast_inference_gpu_cache_usage_percent gauge
+		ballast_inference_gpu_cache_usage_percent{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 0.67
+		# HELP ballast_inference_generation_throughput_tokens_per_second Average generation throughput in tokens per second.
+		# TYPE ballast_inference_generation_throughput_tokens_per_second gauge
+		ballast_inference_generation_throughput_tokens_per_second{model_name="llama-3-70b",namespace="search",node="gpu-node-01",pod="llm-serve-abc"} 2340.5
 	`
 
 	if err := testutil.GatherAndCompare(reg, strings.NewReader(expected),
-		"infracost_inference_requests_running",
-		"infracost_inference_gpu_cache_usage_percent",
-		"infracost_inference_generation_throughput_tokens_per_second",
+		"ballast_inference_requests_running",
+		"ballast_inference_gpu_cache_usage_percent",
+		"ballast_inference_generation_throughput_tokens_per_second",
 	); err != nil {
 		t.Errorf("gauge mismatch:\n%v", err)
 	}
@@ -122,12 +122,12 @@ func TestExporterAllMetricNames(t *testing.T) {
 	}
 
 	expected := map[string]bool{
-		"infracost_inference_prompt_tokens_total":                       false,
-		"infracost_inference_generation_tokens_total":                   false,
-		"infracost_inference_requests_total":                            false,
-		"infracost_inference_requests_running":                          false,
-		"infracost_inference_gpu_cache_usage_percent":                   false,
-		"infracost_inference_generation_throughput_tokens_per_second":   false,
+		"ballast_inference_prompt_tokens_total":                       false,
+		"ballast_inference_generation_tokens_total":                   false,
+		"ballast_inference_requests_total":                            false,
+		"ballast_inference_requests_running":                          false,
+		"ballast_inference_gpu_cache_usage_percent":                   false,
+		"ballast_inference_generation_throughput_tokens_per_second":   false,
 	}
 
 	for _, mf := range mfs {

@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ include "infracost.fullname" . }}-collector
+  name: {{ include "ballast.fullname" . }}-collector
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "infracost.collector.labels" . | nindent 4 }}
+    {{- include "ballast.collector.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "infracost.collector.selectorLabels" . | nindent 6 }}
+      {{- include "ballast.collector.selectorLabels" . | nindent 6 }}
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -16,14 +16,14 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "infracost.collector.selectorLabels" . | nindent 8 }}
+        {{- include "ballast.collector.selectorLabels" . | nindent 8 }}
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: {{ .Values.collector.metricsPort | quote }}
         prometheus.io/path: "/metrics"
         checksum/pricing: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
-      serviceAccountName: {{ include "infracost.serviceAccountName" . }}
+      serviceAccountName: {{ include "ballast.serviceAccountName" . }}
       {{- if .Values.collector.hostPID }}
       hostPID: true
       {{- end }}
@@ -41,7 +41,7 @@ spec:
           imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
           args:
             - --node-name=$(NODE_NAME)
-            - --pricing-config=/etc/infracost/pricing.yaml
+            - --pricing-config=/etc/ballast/pricing.yaml
             - --listen-address=:{{ .Values.collector.metricsPort }}
           env:
             - name: NODE_NAME
@@ -83,7 +83,7 @@ spec:
               mountPath: /var/lib/kubelet/pod-resources
               readOnly: true
             - name: pricing-config
-              mountPath: /etc/infracost
+              mountPath: /etc/ballast
               readOnly: true
             - name: nvidia-libs
               mountPath: /usr/local/nvidia
@@ -101,7 +101,7 @@ spec:
             type: Directory
         - name: pricing-config
           configMap:
-            name: {{ include "infracost.fullname" . }}-pricing
+            name: {{ include "ballast.fullname" . }}-pricing
         - name: nvidia-libs
           hostPath:
             path: {{ .Values.collector.nvidiaDriverPath }}

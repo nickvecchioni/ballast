@@ -42,7 +42,7 @@ type StaticPricingOpts struct {
 }
 
 // NewStaticPricingFromFile loads pricing from a YAML file (typically
-// ConfigMap-mounted at /etc/infracost/pricing.yaml).
+// ConfigMap-mounted at /etc/ballast/pricing.yaml).
 func NewStaticPricingFromFile(path string, opts StaticPricingOpts) (*StaticPricingProvider, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

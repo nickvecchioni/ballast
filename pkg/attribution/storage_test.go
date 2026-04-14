@@ -52,7 +52,7 @@ func TestQueryInstant(t *testing.T) {
 	defer srv.Close()
 
 	store := NewPromStore(srv.URL)
-	samples, err := store.Query(context.Background(), "infracost_pod_cost_per_hour_usd", time.Now())
+	samples, err := store.Query(context.Background(), "ballast_pod_cost_per_hour_usd", time.Now())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -52,11 +52,11 @@ func fixedPeriod(d time.Duration) Period {
 func TestCostByPods(t *testing.T) {
 	store := &mockStore{
 		instantResults: map[string][]MetricSample{
-			"infracost_pod_cost_per_hour_usd": {
+			"ballast_pod_cost_per_hour_usd": {
 				{Labels: map[string]string{"pod": "serve-a", "namespace": "search", "node": "n1", "gpu_type": "H100"}, Value: 3.90},
 				{Labels: map[string]string{"pod": "serve-b", "namespace": "batch", "node": "n1", "gpu_type": "A100"}, Value: 1.80},
 			},
-			"infracost_gpu_utilization_percent": {
+			"ballast_gpu_utilization_percent": {
 				{Labels: map[string]string{"pod": "serve-a", "namespace": "search", "node": "n1"}, Value: 73},
 				{Labels: map[string]string{"pod": "serve-b", "namespace": "batch", "node": "n1"}, Value: 45},
 			},
@@ -94,10 +94,10 @@ func TestCostByPods(t *testing.T) {
 func TestCostByPodsNamespaceFilter(t *testing.T) {
 	store := &mockStore{
 		instantResults: map[string][]MetricSample{
-			"infracost_pod_cost_per_hour_usd": {
+			"ballast_pod_cost_per_hour_usd": {
 				{Labels: map[string]string{"pod": "serve-a", "namespace": "search", "node": "n1", "gpu_type": "H100"}, Value: 3.90},
 			},
-			"infracost_gpu_utilization_percent": {
+			"ballast_gpu_utilization_percent": {
 				{Labels: map[string]string{"pod": "serve-a", "namespace": "search", "node": "n1"}, Value: 50},
 			},
 		},

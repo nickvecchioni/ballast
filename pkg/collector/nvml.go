@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
-	"github.com/nickvecchioni/infracost/pkg/models"
+	"github.com/nickvecchioni/ballast/pkg/models"
 )
 
 // GPUCollector reads GPU metrics from the host.
