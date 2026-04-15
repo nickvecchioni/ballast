@@ -19,8 +19,12 @@ batch       training-job-99999     NVIDIA L4    95%       $0.62
 
 - **Per-pod GPU cost** — `ballast_pod_cost_per_hour_usd` Prometheus metric with pod/namespace/node/gpu_type labels
 - **GPU metrics** — utilization, memory, power, temperature per GPU, mapped to owning pods
-- **Inference telemetry** — sidecar scrapes vLLM token counts and re-exposes with pod labels
-- **kubectl plugin** — `kubectl cost top pods` for real-time cost view
+- **Inference telemetry** — sidecar scrapes vLLM and TGI token counts and re-exposes with pod labels
+- **Cost attribution engine** — multi-level attribution with anomaly detection and forecasting
+- **Budget enforcement** — `InferenceBudget` CRD with Slack and PagerDuty alerting
+- **Cloud billing connectors** — AWS and GCP pricing integration
+- **REST API** — query cost attribution data programmatically
+- **kubectl plugin** — `kubectl cost top pods`, `summary`, and `export` subcommands
 - **Grafana dashboard** — import-ready JSON with cost tables, utilization heatmaps, namespace breakdowns
 - **Helm chart** — single `helm install` on any GPU K8s cluster
 - **Minimal footprint** — DaemonSet targets <50 MB RAM, <0.1 CPU core per node
@@ -55,7 +59,7 @@ graph TD
     ENGINE --> OUTPUT
 ```
 
-**Phase 1 (current):** GPU collector DaemonSet, inference sidecar, kubectl plugin, Grafana dashboard.
+**Implemented:** GPU collector DaemonSet, inference sidecar, kubectl plugin, Grafana dashboard, attribution engine, REST API, budget controller with alerting, cloud billing connectors.
 
 ## Quick Start
 
@@ -116,6 +120,8 @@ mv kubectl-cost /usr/local/bin/
 # Use it
 kubectl cost top pods --all-namespaces
 kubectl cost top pods -n search
+kubectl cost summary --period 7d
+kubectl cost export --format csv --period this-month
 ```
 
 ### Grafana Dashboard
@@ -133,7 +139,7 @@ The dashboard includes:
 
 ### Inference Sidecar (Optional)
 
-For vLLM token-level metrics, add the sidecar to your inference pods:
+For vLLM or TGI token-level metrics, add the sidecar to your inference pods:
 
 ```bash
 # Enable sidecar auto-injection
@@ -167,6 +173,7 @@ Or add the sidecar container manually — it scrapes `localhost:8000/metrics` an
 | `ballast_inference_requests_total` | counter | pod, namespace, node, model_name | Completed requests |
 | `ballast_inference_requests_running` | gauge | pod, namespace, node, model_name | In-flight requests |
 | `ballast_inference_gpu_cache_usage_percent` | gauge | pod, namespace, node, model_name | KV-cache utilization |
+| `ballast_inference_generation_throughput_tokens_per_second` | gauge | pod, namespace, node, model_name | Average generation throughput |
 
 ## Project Structure
 
@@ -174,21 +181,31 @@ Or add the sidecar container manually — it scrapes `localhost:8000/metrics` an
 cmd/
   collector/       DaemonSet binary (GPU metrics + Prometheus)
   sidecar/         Inference telemetry sidecar
-  kubectl-cost/    kubectl plugin (top pods)
-  engine/          Attribution engine (Phase 2)
-  controller/      Budget controller (Phase 3)
+  kubectl-cost/    kubectl plugin (top pods, summary, export)
+  engine/          Attribution engine
+  controller/      Budget controller
 pkg/
-  collector/       NVML wrapper, PodResources client, metrics loop
-  telemetry/       vLLM scraper, inference exporter
-  billing/         Static GPU pricing provider
-  models/          Core data types
-  attribution/     Cost attribution engine (Phase 2)
-  enforcement/     Budget controller + webhook (Phase 3)
-  api/             REST API server (Phase 2)
-  enricher/        K8s metadata cache (Phase 2)
+  collector/       NVML wrapper, PodResources client, PID mapper, metrics loop
+  telemetry/       vLLM + TGI scraper, inference exporter
+  billing/         GPU pricing providers (static, AWS, GCP)
+  models/          Core data types and CRD types
+  attribution/     Cost attribution engine, aggregator, storage
+  enforcement/     Budget controller, webhook, alerting (Slack, PagerDuty)
+  api/             REST API server with middleware
+  enricher/        K8s metadata cache
 deploy/
   helm/            Helm chart
   grafana/         Grafana dashboard JSON
+api/
+  v1alpha1/        CRD type definitions (InferenceBudget, InferenceCostReport)
+config/
+  crd/             CRD YAML manifests
+  samples/         Sample CR manifests
+docs/
+  design.md        Architecture and design document
+hack/
+  dev-cluster.sh   Development cluster setup
+  test-e2e.sh      End-to-end test runner
 ```
 
 ## Development
@@ -203,6 +220,7 @@ make test
 # Build Docker images (use --platform for cross-compilation on Apple Silicon)
 docker build --platform linux/amd64 -f Dockerfile.collector -t ballast-collector:latest .
 docker build --platform linux/amd64 -f Dockerfile.engine -t ballast-engine:latest .
+docker build --platform linux/amd64 -f Dockerfile.controller -t ballast-controller:latest .
 
 # Lint
 make lint
