@@ -27,36 +27,32 @@ batch       training-job-99999     NVIDIA L4    95%       $0.62
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  DATA COLLECTION (DaemonSet + Sidecars)                         │
-│                                                                 │
-│  ┌──────────┐  ┌───────────────┐  ┌──────────┐  ┌───────────┐ │
-│  │ GPU      │  │ Inference     │  │ K8s      │  │ Cloud     │ │
-│  │ Metrics  │  │ Server        │  │ Metadata │  │ Billing   │ │
-│  │ (NVML)   │  │ Telemetry     │  │ Enricher │  │ Connector │ │
-│  └────┬─────┘  └──────┬────────┘  └────┬─────┘  └─────┬─────┘ │
-└───────┼────────────────┼────────────────┼──────────────┼───────┘
-        │                │                │              │
-        ▼                ▼                ▼              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  COST ATTRIBUTION ENGINE (Deployment)                           │
-│                                                                 │
-│  ┌───────────────┐  ┌──────────────┐  ┌─────────────────────┐  │
-│  │ Join &        │  │ Multi-level  │  │ Anomaly Detection   │  │
-│  │ Correlate     │──│ Attribution  │──│ & Forecasting       │  │
-│  └───────────────┘  └──────────────┘  └─────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  OUTPUT LAYER                                                   │
-│                                                                 │
-│  ┌──────────┐  ┌──────┐  ┌────────┐  ┌───────────┐  ┌──────┐ │
-│  │Dashboard │  │ API  │  │ Alerts │  │ Chargeback│  │ CLI  │ │
-│  │(Grafana) │  │(REST)│  │(Slack) │  │  (CSV)    │  │(kube)│ │
-│  └──────────┘  └──────┘  └────────┘  └───────────┘  └──────┘ │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph DC["DATA COLLECTION (DaemonSet + Sidecars)"]
+        GPU["GPU Metrics\n(NVML)"]
+        INF["Inference Server\nTelemetry"]
+        K8S["K8s Metadata\nEnricher"]
+        CLOUD["Cloud Billing\nConnector"]
+    end
+
+    subgraph ENGINE["COST ATTRIBUTION ENGINE (Deployment)"]
+        JOIN["Join &\nCorrelate"] --> ATTR["Multi-level\nAttribution"] --> ANOMALY["Anomaly Detection\n& Forecasting"]
+    end
+
+    subgraph OUTPUT["OUTPUT LAYER"]
+        DASH["Dashboard\n(Grafana)"]
+        API["API\n(REST)"]
+        ALERTS["Alerts\n(Slack)"]
+        CHARGE["Chargeback\n(CSV)"]
+        CLI["CLI\n(kube)"]
+    end
+
+    GPU --> ENGINE
+    INF --> ENGINE
+    K8S --> ENGINE
+    CLOUD --> ENGINE
+    ENGINE --> OUTPUT
 ```
 
 **Phase 1 (current):** GPU collector DaemonSet, inference sidecar, kubectl plugin, Grafana dashboard.
